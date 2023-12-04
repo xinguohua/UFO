@@ -2,10 +2,11 @@ package aser.ufo;
 
 import aser.ufo.misc.Pair;
 import aser.ufo.trace.Indexer;
+import com.google.common.collect.Lists;
 import config.Configuration;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import trace.*;
 import z3.Z3Run;
@@ -39,7 +40,7 @@ public class JUfoSolver implements UfoSolver {
   }
 
   @Override
-  public IntArrayList searchUafSchedule(Pair<DeallocNode, MemAccNode> p) {
+  public LongArrayList searchUafSchedule(Pair<DeallocNode, MemAccNode> p) {
     MemAccNode accNode = p.value;
     DeallocNode deNode = p.key;
 //    String casualConstraint = pkt.causalConstr;
@@ -93,9 +94,10 @@ public class JUfoSolver implements UfoSolver {
   }
 
   @Override
-  public void buildCausalConstrOpt(Indexer index) {
-
-    ArrayList<ReadNode> allReadNodes = index.getTSSeqRead();
+  public void buildCausalConstrOpt(ArrayList<ReadNode> ret) {
+    Indexer index = new Indexer();
+    //ArrayList<ReadNode> allReadNodes = index.getTSSeqRead();
+    ArrayList<ReadNode> allReadNodes= Lists.newArrayList();
     Long2ObjectOpenHashMap<ArrayList<WriteNode>> indexedWriteNodes = index.getTSAddr2SeqWrite();
     Long2LongOpenHashMap initValueMap = index.getTSInitWrites();
 

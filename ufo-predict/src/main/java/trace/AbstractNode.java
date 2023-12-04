@@ -42,7 +42,7 @@ package trace;
  */
 public abstract class AbstractNode {
 
-  public long gid;
+  public int gid;
   public final short tid;
 
 

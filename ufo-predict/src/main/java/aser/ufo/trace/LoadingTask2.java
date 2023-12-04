@@ -68,7 +68,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         	
             seq.numOfEvents++;
 
-        		node.gid = Bytes.longs.add(tid, seq.numOfEvents);//check consistency
+        		node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);//check consistency
           
                 if (node instanceof TStartNode)
                     seq.newTids.add(((TStartNode)node).tidKid);
@@ -97,7 +97,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
       //TODO: handle last thread node once error happens
 	  		TEndNode node =  new TEndNode(tid,tid,0);//failed
 	  		seq.numOfEvents++;
-        	node.gid = Bytes.longs.add(tid, seq.numOfEvents);
+        	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
         	
             //LOG.debug(node.toString());//JEFF
 

@@ -68,7 +68,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
        	 
         	//assign global id to node: tid - local_event_number (consistently!)
        	 //unique 
-        	node.gid = Bytes.longs.add(tid, seq.numOfEvents);
+        	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
         	
 
         //LOG.debug(node.toString());//JEFF
@@ -112,7 +112,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
           //TODO: handle last thread node once error happens
     	  		TEndNode node =  new TEndNode(tid,tid,0);//failed
     	  		seq.numOfEvents++;
-            	node.gid = Bytes.longs.add(tid, seq.numOfEvents);
+            	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
 
         		NewReachEngine.saveToThreadLastNode(tid, node);
 

@@ -157,3 +157,37 @@ wrap_free (in libclang_rt.tsan_osx_dynamic.dylib) (sanitizer_malloc_mac.inc:144)
   /home/andrewchin/Documents/ufo/test.cc:26 pc: 0x4b6099
     /home/andrewchin/Documents/ufo/test.cc:46 pc: 0x4b62cd
 
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+
+#1 Session   candidateUafLs: 2
+

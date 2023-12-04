@@ -290,8 +290,8 @@ public static void postprocessing()
 //    long toID = Bytes.longs.add(to.tid, to.gid);
     
     //save vector clock
-    long2VCs.put(from.gid, vc1);
-    long2VCs.put(to.gid, vc2);
+    long2VCs.put(new Long(from.gid), vc1);
+    long2VCs.put(new Long(to.gid), vc2);
   }
 
   public static boolean canReach(AbstractNode n1, AbstractNode n2) {

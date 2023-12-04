@@ -17,7 +17,7 @@ import java.util.ArrayList;
  */
 public interface UfoSolver {
 
-	LongArrayList searchUafSchedule(Pair<DeallocNode, MemAccNode> p);
+  LongArrayList searchUafSchedule(Pair<DeallocNode, MemAccNode> p);
 
   void buildIntraThrConstr(Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map);
 
