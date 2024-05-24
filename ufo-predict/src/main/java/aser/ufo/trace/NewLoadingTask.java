@@ -61,15 +61,11 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         seq.stat.c_total++;
         seq.numOfEvents++;
         
-        if (node != null) {          
+        if (node != null) {
 
-//       	 if(seq.stat.c_isync%1000==0)
-//       		 LOG.info("Num of ISYNC nodes {}", seq.stat.c_isync);
-       	 
-        	//assign global id to node: tid - local_event_number (consistently!)
-       	 //unique 
         	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
-        	
+
+            LOG.info(node.toString());
 
         //LOG.debug(node.toString());//JEFF
 
@@ -160,6 +156,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
     long time;
     int eTime;
     long len;
+    long order;
 
     int type_idx__ = typeIdx & 0xffffff3f;
     
@@ -175,6 +172,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         tmp = getInt(breader);
         tmp = getLong48b(breader);
         tmp = getInt(breader);
+        order = getLong48b(breader);
+
         return new TBeginNode(curTid, tidParent, eTime);
 
       case 1: // cEnd
@@ -190,6 +189,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         pc = getLong48b(breader);
 //                System.out.println("Start  " + _tidParent + "  ->  " + tidParent);
 //                println(s"#$_tidParent ---> #$tidParent")
+        order = getLong48b(breader);
+
         stat.c_tstart++;
         return new TStartNode(index,curTid, tidKid, eTime, pc);
       case 3: // join
@@ -199,6 +200,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         eTime = getInt(breader);
         pc = getLong48b(breader);
 //                System.out.println("Join  " + tidParent + "  <-  " + _tidParent);
+        order = getLong48b(breader);
+
         stat.c_join++;
         return new TJoinNode(index,curTid, tidKid, eTime, pc);
 //      * ThreadAcqLock,
@@ -214,6 +217,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         addr = getLong48b(breader);
         pc = getLong48b(breader);
 //                System.out.println("#" + _tid + " lock  " + addr);
+        order = getLong48b(breader);
+
         stat.c_lock++;
         //lastIdx = index;
 //	public LockNode(short tid, long lockID, long pc, long idx) {
@@ -222,6 +227,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         addr = getLong48b(breader);
         pc = getLong48b(breader);
 //                System.out.println("#" + _tid + " nUnlock  " + addr);
+        order = getLong48b(breader);
         stat.c_unlock++;
         return null;//JEFF
       case 6: // alloc
@@ -229,6 +235,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         addr = getLong48b(breader);
         pc = getLong48b(breader);
         size = getInt(breader);
+        order = getLong48b(breader);
 //        System.out.println("allocate #" + _tid + " " + fsize + "  from " + addr);
         stat.c_alloc++;
        // lastIdx = index;
@@ -238,6 +245,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         addr = getLong48b(breader);
         pc = getLong48b(breader);
         size = getInt(breader);
+        order = getLong48b(breader);
 //        System.out.println("deallocate #" + _tid + "  from " + addr);
         stat.c_dealloc++;
         //lastIdx = index;
@@ -248,6 +256,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         pc = getLong48b(breader);
         size = getInt(breader);
         stat.c_range_r++;
+        order = getLong48b(breader);
         //lastIdx = index;
         return null;//JEFF
 //                System.out.println("#" + _tid + " read range " + fsize + "  from " + addr);
@@ -256,6 +265,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         addr = getLong48b(breader);
         pc = getLong48b(breader);
         size = getInt(breader);
+        order = getLong48b(breader);
+
         //lastIdx = index;
 //                System.out.println("#" + _tid + " read write " + fsize + "  from " + addr);
         stat.c_range_w++;
@@ -263,6 +274,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
       case 12: // PtrAssignment
         long src = getLong48b(breader);
         long dest = getLong48b(breader);
+        order = getLong48b(breader);
+
 //        System.out.println(">>> prop " + Long.toHexString(dest) + "   <= " + Long.toHexString(src));
         //long idx = lastIdx;
         //lastIdx = 0;
@@ -277,33 +290,45 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         return null;
       case 15: //Func Entry
         pc = getLong48b(breader);
+        order = getLong48b(breader);
+
         //FuncEntryNode funcEntryNode = new FuncEntryNode(curTid, pc);
         //JEFF
         //LOG.debug(funcEntryNode.toString());
         return null;//JEFF
       case 16: //Func Exit
-          return null;//JEFF
+        order = getLong48b(breader);
+
+        return null;//JEFF
       case 17: // ThrCondWait
          index = getLong48b(breader);
     	  	long   cond = getLong48b(breader);
     	  	long  mutex = getLong48b(breader);
         pc = getLong48b(breader);
+        order = getLong48b(breader);
+
         stat.c_wait++;
     	    return new WaitNode(index,curTid,cond,mutex,pc); 
       case 18: // ThrCondSignal
     	  	index = getLong48b(breader);
     	  	cond = getLong48b(breader);
              pc = getLong48b(breader);
+            order = getLong48b(breader);
+
              stat.c_notify++;
        	    return new NotifyNode(index,curTid,cond,pc); 
       case 19: // ThrCondBroadCast
     	  index = getLong48b(breader);
     	  cond = getLong48b(breader);
          pc = getLong48b(breader);
-         stat.c_notifyAll++;
+        order = getLong48b(breader);
+
+        stat.c_notifyAll++;
    	    return new NotifyAllNode(index,curTid,cond,pc); 
       case 20: // de-ref
         long ptrAddr = getLong48b(breader);
+        order = getLong48b(breader);
+
 //        System.out.println(">>> deref " + Long.toHexString(ptrAddr));
         return null;
       default: // 8 + (13 + 48 -> 64) -> 72 + header (1, 2, 4, 8)
@@ -339,6 +364,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
 //    long index = getLong48b(breader);
     long addr = getLong48b(breader);
     long pc = getLong48b(breader);
+    long order = getLong48b(breader);
 
     int sz = 0;
     while (sz != size) {
