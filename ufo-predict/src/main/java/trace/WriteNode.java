@@ -35,8 +35,8 @@ public class WriteNode extends MemAccNode {
   public final byte len;
   public final long value;
 
-  public WriteNode(short tid, long pc, long addr, byte len, long value) {
-    super(tid, addr, pc);
+  public WriteNode(short tid, long pc, long addr, byte len, long value, long o) {
+    super(tid, addr, pc, o);
     this.value = value;
     this.len = len;
   }
@@ -46,7 +46,7 @@ public class WriteNode extends MemAccNode {
   }
 
   public String toString() {
-    return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc)  + " W  addr:" + addr + "  len: " + len  + " value:" + value;
+    return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc)  + " W  addr:" + addr + "  len: " + len  + " value:" + value + " order:" + order;
   }
 
   @Override

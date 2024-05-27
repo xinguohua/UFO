@@ -32,8 +32,8 @@ public abstract class ISyncNode extends AbstractNode {
 
 	public final long index;
 
-	public ISyncNode(long index,short tid) {
-		super(tid);
+	public ISyncNode(long index,short tid, long order) {
+		super(tid, order);
 		this.index = index;
 
 	}

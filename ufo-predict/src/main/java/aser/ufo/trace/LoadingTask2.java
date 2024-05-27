@@ -95,7 +95,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 	  {
 	  		e.printStackTrace();
       //TODO: handle last thread node once error happens
-	  		TEndNode node =  new TEndNode(tid,tid,0);//failed
+	  		TEndNode node =  new TEndNode(tid,tid,0, 0);//failed
 	  		seq.numOfEvents++;
         	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
         	
@@ -157,7 +157,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         tmp = getLong48b(breader);
         tmp = getInt(breader);
         order = getLong48b(breader);
-        return new TBeginNode(curTid, tidParent, eTime);
+        return new TBeginNode(curTid, tidParent, eTime, order);
 
       case 1: // cEnd
         tidParent = getShort(breader);
@@ -166,7 +166,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 
 //                return new TJoinNode(_tidParent, pc_id, "" + tidParent, AbstractNode.TYPE.JOIN);
 //                System.out.println("End " + tidParent + "  to " + _tidParent);
-        return new TEndNode(curTid, tidParent, eTime);
+        return new TEndNode(curTid, tidParent, eTime, order);
       case 2: // thread start
           long index = getLong48b(breader);
         tidKid = getShort(breader);
@@ -177,7 +177,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 //                System.out.println("Start  " + _tidParent + "  ->  " + tidParent);
 //                println(s"#$_tidParent ---> #$tidParent")
         stat.c_tstart++;
-        return new TStartNode(index,curTid, tidKid, eTime, pc);
+        return new TStartNode(index,curTid, tidKid, eTime, pc, order);
       case 3: // join
           index = getLong48b(breader);
         tidKid = getShort(breader);
@@ -187,7 +187,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 
 //                System.out.println("Join  " + tidParent + "  <-  " + _tidParent);
         stat.c_join++;
-        return new TJoinNode(index,curTid, tidKid, eTime, pc);
+        return new TJoinNode(index,curTid, tidKid, eTime, pc, order);
 //      * ThreadAcqLock,
 //  * ThreadRelLock = 5,
 //  * MemAlloc,
@@ -206,7 +206,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         stat.c_lock++;
         //lastIdx = index;
 //	public LockNode(short tid, long lockID, long pc, long idx) {
-        return new LockNode(curTid, addr, pc);
+        return new LockNode(curTid, addr, pc, order);
       case 5: // nUnlock
         addr = getLong48b(breader);
         pc = getLong48b(breader);
@@ -214,7 +214,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 
 //                System.out.println("#" + _tid + " nUnlock  " + addr);
         stat.c_unlock++;
-        return new UnlockNode(curTid, addr, pc);
+        return new UnlockNode(curTid, addr, pc, order);
       case 6: // alloc
 //        index = getLong48b(breader);
         addr = getLong48b(breader);
@@ -225,7 +225,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 //        System.out.println("allocate #" + _tid + " " + fsize + "  from " + addr);
         stat.c_alloc++;
        // lastIdx = index;
-        return new AllocNode(curTid, pc, addr, size);
+        return new AllocNode(curTid, pc, addr, size, order);
       case 7: // dealloc
 //        index = getLong48b(breader);
         addr = getLong48b(breader);
@@ -236,7 +236,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 //        System.out.println("deallocate #" + _tid + "  from " + addr);
         stat.c_dealloc++;
         //lastIdx = index;
-        return new DeallocNode(curTid, pc, addr, size);
+        return new DeallocNode(curTid, pc, addr, size, order);
       case 10: // range r
 //        index = getLong48b(breader);
         addr = getLong48b(breader);
@@ -246,7 +246,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
 
         stat.c_range_r++;
         //lastIdx = index;
-        return new RangeReadNode(curTid, pc, addr, size);
+        return new RangeReadNode(curTid, pc, addr, size, order);
 //                System.out.println("#" + _tid + " read range " + fsize + "  from " + addr);
       case 11: // range w
 //        index = getLong48b(breader);
@@ -258,7 +258,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         //lastIdx = index;
 //                System.out.println("#" + _tid + " read write " + fsize + "  from " + addr);
         stat.c_range_w++;
-        return new RangeWriteNode(curTid, pc, addr, size);
+        return new RangeWriteNode(curTid, pc, addr, size, order);
       case 12: // PtrAssignment
         long src = getLong48b(breader);
         long dest = getLong48b(breader);
@@ -268,7 +268,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         //long idx = lastIdx;
         //lastIdx = 0;
 //  public PtrPropNode(short tid, long src, long dest, long idx) {
-        return new PtrPropNode(curTid, src, dest, 0);//JEFF idx
+        return new PtrPropNode(curTid, src, dest, 0, order);//JEFF idx
       case 14: // InfoPacket
 //        const u64 timestamp;
 //        const u64 length;
@@ -278,15 +278,16 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         return null;
       case 15:
         pc = getLong48b(breader);
-        FuncEntryNode funcEntryNode = new FuncEntryNode(curTid, pc);
         order = getLong48b(breader);
+        FuncEntryNode funcEntryNode = new FuncEntryNode(curTid, pc, order);
+
 
         //JEFF
         //LOG.debug(funcEntryNode.toString());
         return funcEntryNode;
       case 16:
         order = getLong48b(breader);
-        return new FuncExitNode(curTid);
+        return new FuncExitNode(curTid, order);
       case 17: // ThrCondWait
         index = getLong48b(breader);
     	  	long   cond = getLong48b(breader);
@@ -294,21 +295,21 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         pc = getLong48b(breader);
         order = getLong48b(breader);
 
-        return new WaitNode(index,curTid,cond,mutex,pc);
+        return new WaitNode(index,curTid,cond,mutex,pc, order);
       case 18: // ThrCondSignal
     	  	index = getLong48b(breader);
     	  	cond = getLong48b(breader);
              pc = getLong48b(breader);
              order = getLong48b(breader);
 
-        return new NotifyNode(index,curTid,cond,pc);
+        return new NotifyNode(index,curTid,cond,pc, order);
       case 19: // ThrCondBroadCast
     	  index = getLong48b(breader);
     	  cond = getLong48b(breader);
          pc = getLong48b(breader);
         order = getLong48b(breader);
 
-        return new NotifyAllNode(index,curTid,cond,pc);
+        return new NotifyAllNode(index,curTid,cond,pc, order);
       case 20: // de-ref
         long ptrAddr = getLong48b(breader);
 //        System.out.println(">>> deref " + Long.toHexString(ptrAddr));
@@ -378,9 +379,9 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
     }
     valueBuf.clear();
     if (isW) {
-      return new WriteNode(curTid, pc, addr, (byte) size, obj.longValue());
+      return new WriteNode(curTid, pc, addr, (byte) size, obj.longValue(), order);
     } else { // type_idx 9
-      return new ReadNode(curTid, pc, addr, (byte) size, obj.longValue());
+      return new ReadNode(curTid, pc, addr, (byte) size, obj.longValue(), order);
     }
   }
 

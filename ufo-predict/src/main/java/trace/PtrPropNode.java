@@ -6,8 +6,8 @@ public class PtrPropNode extends AbstractNode {
   public final long dest;
   public final long idx; //close idx
 
-  public PtrPropNode(short tid, long src, long dest, long idx) {
-    super(tid);
+  public PtrPropNode(short tid, long src, long dest, long idx, long order) {
+    super(tid, order);
     this.src = src;
     this.dest = dest;
     this.idx = idx;

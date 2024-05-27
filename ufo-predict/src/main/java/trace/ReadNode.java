@@ -35,8 +35,8 @@ public class ReadNode extends MemAccNode {
   public final byte len;
   public final long value;
 
-  public ReadNode(short tid, long pc, long addr, byte len, long value) {
-    super(tid, addr, pc);
+  public ReadNode(short tid, long pc, long addr, byte len, long value, long o) {
+    super(tid, addr, pc, o);
     this.value = value;
     this.len = len;
   }
@@ -47,7 +47,7 @@ public class ReadNode extends MemAccNode {
 
   public String toString() {
     return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc) +  "  R   addr:"  + addr
-        + "  len: " + len + " value:" + value;
+        + "  len: " + len + " value:" + value + " order: " + order;
   }
 
   @Override

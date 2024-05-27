@@ -40,8 +40,8 @@ public class TStartNode extends ISyncNode {
 		return tidKid;
 	}
 
-	public TStartNode(long index, short tid, short tidK, int t, long pc) {
-		super(index,tid);
+	public TStartNode(long index, short tid, short tidK, int t, long pc, long order) {
+		super(index,tid, order);
 		tidKid = tidK;
 		eTime = t;
 		this.pc = pc;
@@ -49,7 +49,7 @@ public class TStartNode extends ISyncNode {
 
 	public String toString() {
 		return "gid: "+ gid +" #" + tid + "   pc:0x" + Long.toHexString(pc)
-				+ " start  -> #" + tidKid;
+				+ " start  -> #" + tidKid + " order: "+ order;
 	}
 
 	@Override

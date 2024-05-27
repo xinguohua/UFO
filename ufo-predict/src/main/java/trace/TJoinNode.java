@@ -40,15 +40,15 @@ public class TJoinNode extends ISyncNode {
 		return tid_join;
 	}
 
-	public TJoinNode(long index, short tid, short addr, int t, long pc) {
-		super(index,tid);
+	public TJoinNode(long index, short tid, short addr, int t, long pc, long order) {
+		super(index,tid, order);
 		tid_join = addr;
 		eTime = t;
 		this.pc = pc;
 	}
 
 	public String toString() {
-		return gid + " #" + tid + "   pc: 0x" + Long.toHexString(pc)  + " Join   <- " + tid_join;
+		return gid + " #" + tid + "   pc: 0x" + Long.toHexString(pc)  + " Join   <- " + tid_join + "  order " + order;
 	}
 
 	@Override

@@ -36,8 +36,8 @@ public class UnlockNode extends ISyncNode {
   public final long lockID;
   public final long pc;
 
-  public UnlockNode(short tid, long addr, long pc) {
-    super(-1,tid);
+  public UnlockNode(short tid, long addr, long pc, long order) {
+    super(-1,tid, order);
     this.lockID = addr;
     this.pc = pc;
   }
@@ -55,7 +55,7 @@ public class UnlockNode extends ISyncNode {
   }
 
   public String toString() {
-    return "gid: "+gid + " #" + tid + " pc:0x" + Long.toHexString(pc) + " Unlock " + lockID;
+    return "gid: "+gid + " #" + tid + " pc:0x" + Long.toHexString(pc) + " Unlock " + lockID + " order: " + order;
   }
 
   @Override

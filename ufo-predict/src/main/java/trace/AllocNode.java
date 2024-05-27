@@ -2,15 +2,16 @@ package trace;
 
 public class AllocNode extends AbstractNode {
 
-	public final static AllocNode FAKE = new AllocNode((short) -1,-1,-1,-1);
+	public final static AllocNode FAKE = new AllocNode((short) -1,-1,-1,-1, -1);
 
   public static NodeType TYPE = NodeType.ALLOC;
 
   public final long addr;
   public final int length;
   public final long pc;
-  public AllocNode(short tid, long pc_, long a, int len) {
-    super(tid);
+
+  public AllocNode(short tid, long pc_, long a, int len, long order_) {
+    super(tid, order_);
     addr = a;
     length = len;
     pc = pc_;
@@ -18,7 +19,7 @@ public class AllocNode extends AbstractNode {
 
 
   public String toString() {
-    return "gid: "+gid + " #" + tid  + "   pc:0x" + Long.toHexString(pc) + " Alloc  addr:" +  addr + "  fsize:" + length;
+    return "gid: "+gid + " #" + tid  + "   pc:0x" + Long.toHexString(pc) + " Alloc  addr:" +  addr + "  fsize:" + length + " order: " + order;
   }
 
   @Override
@@ -32,6 +33,7 @@ public class AllocNode extends AbstractNode {
     if (addr != allocNode.addr) return false;
     if (length != allocNode.length) return false;
     if (pc != allocNode.pc) return false;
+    if (order != allocNode.order) return false;
     return gid == allocNode.gid;
   }
 
@@ -41,6 +43,7 @@ public class AllocNode extends AbstractNode {
     result = 31 * result + (int) (addr ^ (addr >>> 32));
     result = 31 * result + length;
     result = 31 * result + (int) (pc ^ (pc >>> 32));
+    result = 31 * result + (int) (order ^ (order >>> 32));
 //    result = 31 * result + (int) (idx ^ (idx >>> 32));
     return result;
   }

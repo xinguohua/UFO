@@ -6,13 +6,13 @@ public class RangeReadNode extends MemAccNode {
 
   public final int length;
 
-  public RangeReadNode(short tid, long p, long a, int len) {
-    super(tid, a, p);
+  public RangeReadNode(short tid, long p, long a, int len, long order) {
+    super(tid, a, p, order);
     length = len;
   }
 
   public String toString() {
-    return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc)  + " Range R  addr:" + addr + " length:" + length;
+    return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc)  + " Range R  addr:" + addr + " length:" + length + " order: "+ order;
   }
   public long getAddr() {
     return addr;

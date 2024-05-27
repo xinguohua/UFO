@@ -38,8 +38,8 @@ public class WaitNode extends IWaitNotifyNode {
 
 	public final long pc;
 
-	public WaitNode(long index,short tid, long condID, long lockID, long pc) {
-		super(index,tid);
+	public WaitNode(long index,short tid, long condID, long lockID, long pc, long order) {
+		super(index,tid, order);
 
 		this.condID = condID;
 		this.lockID = lockID;
@@ -51,7 +51,7 @@ public class WaitNode extends IWaitNotifyNode {
 	}
 
 	public String toString() {
-		return "gid: "+ gid +" idx: "+ index+ " #" + tid + " pc:0x" + Long.toHexString(pc) + " wait cond " + condID + " lock " + lockID;
+		return "gid: "+ gid +" idx: "+ index+ " #" + tid + " pc:0x" + Long.toHexString(pc) + " wait cond " + condID + " lock " + lockID + " order " + order;
 	}
 
 

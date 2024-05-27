@@ -36,8 +36,8 @@ public class LockNode extends ISyncNode {
 	public final long lockID;
 	public final long pc;
 
-	public LockNode(short tid, long lockID, long pc) {
-		super(-1,tid);
+	public LockNode(short tid, long lockID, long pc, long order) {
+		super(-1,tid, order);
 		this.lockID = lockID;
 		this.pc = pc;
 	}

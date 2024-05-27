@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/ufo.iml" filepath="$PROJECT_DIR$/ufo.iml" />
+      <module fileurl="file://$PROJECT_DIR$/UFO.iml" filepath="$PROJECT_DIR$/UFO.iml" />
     </modules>
   </component>
 </project>

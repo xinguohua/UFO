@@ -44,10 +44,12 @@ public abstract class AbstractNode {
 
   public int gid;
   public final short tid;
+  public final long order;
 
 
-  public AbstractNode(short tid) {
+  public AbstractNode(short tid, long order) {
     this.tid = tid;
+    this.order = order;
   }
 
   @Override

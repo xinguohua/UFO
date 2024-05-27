@@ -38,8 +38,9 @@ public abstract class MemAccNode extends AbstractNode {
   public final long addr;
   public final long pc;
   public long ptr = 0;
-  public MemAccNode(short tid, long a, long p) {
-    super(tid);
+
+  public MemAccNode(short tid, long a, long p, long o) {
+    super(tid, o);
     addr = a;
     pc = p;
   }
@@ -56,6 +57,7 @@ public abstract class MemAccNode extends AbstractNode {
 
     if (addr != that.addr) return false;
     if (pc != that.pc) return false;
+    if (order != that.order) return false;
     return gid == that.gid;
   }
 
@@ -64,6 +66,7 @@ public abstract class MemAccNode extends AbstractNode {
     int result = super.hashCode();
     result = 31 * result + (int) (addr ^ (addr >>> 32));
     result = 31 * result + (int) (pc ^ (pc >>> 32));
+    result = 31 * result + (int) (order ^ (order >>> 32));
 //    result = 31 * result + (int) (idx ^ (idx >>> 32));
     return result;
   }

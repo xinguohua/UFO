@@ -11,7 +11,7 @@ public class TLHeader extends AbstractNode {
   public final long data;
 
   public TLHeader(short tid, long v, long t, long d) {
-    super(tid);
+    super(tid, 0);
     version = v;
     timeStart = new Date(t);
     data = d;

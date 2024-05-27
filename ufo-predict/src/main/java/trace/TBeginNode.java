@@ -7,8 +7,8 @@ public class TBeginNode extends ISyncNode {
   public final short tidParent;
   public final int eTime;
 
-  public TBeginNode(short thisTid, short titPa, int t) {
-    super(-1,thisTid);
+  public TBeginNode(short thisTid, short titPa, int t, long order) {
+    super(-1,thisTid, order);
     tidParent = titPa;
     eTime = t;
   }
@@ -31,7 +31,7 @@ public class TBeginNode extends ISyncNode {
   }
 
 	public String toString() {
-		return "gid: "+ gid +" #" + tid + "   begin";
+		return "gid: "+ gid +" #" + tid + "   begin" + " order: " + order;
 	}
 	
   @Override

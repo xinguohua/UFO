@@ -6,8 +6,8 @@ public class TEndNode extends ISyncNode {
 
   public final short tidParent;
   public final int eTime;
-  public TEndNode(short thisTid, short tidP, int t) {
-    super(-1,thisTid);
+  public TEndNode(short thisTid, short tidP, int t, long order) {
+    super(-1,thisTid, order);
     tidParent = tidP;
     eTime = t;
   }
@@ -30,7 +30,7 @@ public class TEndNode extends ISyncNode {
   }
 
 	public String toString() {
-		return "gid: "+ gid +" #" + tid + "   end";
+		return "gid: "+ gid +" #" + tid + "   end" + " order:" + order;
 	}
 	
   @Override

@@ -6,14 +6,14 @@ public class RangeWriteNode extends MemAccNode {
 
   public final int length;
 
-  public RangeWriteNode(short tid, long p, long add, int len) {
-    super(tid, add, p);
+  public RangeWriteNode(short tid, long p, long add, int len, long o) {
+    super(tid, add, p, o);
     length = len;
   }
 
 
   public String toString() {
-    return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc)  + " Range W  addr:" + addr + " length:" + length;
+    return "gid: "+gid + " #" + tid + "   pc:0x" + Long.toHexString(pc)  + " Range W  addr:" + addr + " length:" + length +" order: " + order;
   }
 
   public long getAddr() {

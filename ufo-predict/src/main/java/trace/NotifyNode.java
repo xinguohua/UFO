@@ -37,8 +37,8 @@ public class NotifyNode extends IWaitNotifyNode {
 
 	public final long pc;
 
-	public NotifyNode(long index,short tid, long condID, long pc) {
-		super(index,tid);
+	public NotifyNode(long index,short tid, long condID, long pc, long order) {
+		super(index,tid, order);
 		this.condID = condID;
 		this.pc = pc;
 	}

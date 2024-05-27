@@ -31,8 +31,8 @@ package trace;
 public abstract class IWaitNotifyNode extends ISyncNode {
 
 
-	public IWaitNotifyNode(long index, short tid) {
-		super(index,tid);
+	public IWaitNotifyNode(long index, short tid, long order) {
+		super(index,tid, order);
 	}
 
 	public abstract long getAddr();

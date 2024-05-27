@@ -36,8 +36,7 @@ public class Session2 extends Session {
   
   @Override
   public void start() {
-	  
-	  traceLoader.preprocessWaitNotify();//JEFF
+	 traceLoader.preprocessWaitNotify();//JEFF
 	  printTraceStats();//JEFF
 	  
     sessionID = 0;

@@ -106,7 +106,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
     	  {
     	  		e.printStackTrace();
           //TODO: handle last thread node once error happens
-    	  		TEndNode node =  new TEndNode(tid,tid,0);//failed
+    	  		TEndNode node =  new TEndNode(tid,tid,0, 0);//failed
     	  		seq.numOfEvents++;
             	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
 
@@ -174,14 +174,15 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         tmp = getInt(breader);
         order = getLong48b(breader);
 
-        return new TBeginNode(curTid, tidParent, eTime);
+        return new TBeginNode(curTid, tidParent, eTime, order);
 
       case 1: // cEnd
         tidParent = getShort(breader);
         eTime = getInt(breader);
+        order = getLong48b(breader);
 //                return new TJoinNode(_tidParent, pc_id, "" + tidParent, AbstractNode.TYPE.JOIN);
 //                System.out.println("End " + tidParent + "  to " + _tidParent);
-        return new TEndNode(curTid, tidParent, eTime);
+        return new TEndNode(curTid, tidParent, eTime, order);
       case 2: // thread start
           long index = getLong48b(breader);
         tidKid = getShort(breader);
@@ -192,7 +193,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         order = getLong48b(breader);
 
         stat.c_tstart++;
-        return new TStartNode(index,curTid, tidKid, eTime, pc);
+        return new TStartNode(index,curTid, tidKid, eTime, pc, order);
       case 3: // join
            index = getLong48b(breader);
 
@@ -203,7 +204,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         order = getLong48b(breader);
 
         stat.c_join++;
-        return new TJoinNode(index,curTid, tidKid, eTime, pc);
+        return new TJoinNode(index,curTid, tidKid, eTime, pc, order);
 //      * ThreadAcqLock,
 //  * ThreadRelLock = 5,
 //  * MemAlloc,
@@ -308,7 +309,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         order = getLong48b(breader);
 
         stat.c_wait++;
-    	    return new WaitNode(index,curTid,cond,mutex,pc); 
+    	    return new WaitNode(index,curTid,cond,mutex,pc, order);
       case 18: // ThrCondSignal
     	  	index = getLong48b(breader);
     	  	cond = getLong48b(breader);
@@ -316,7 +317,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
             order = getLong48b(breader);
 
              stat.c_notify++;
-       	    return new NotifyNode(index,curTid,cond,pc); 
+       	    return new NotifyNode(index,curTid,cond,pc,order);
       case 19: // ThrCondBroadCast
     	  index = getLong48b(breader);
     	  cond = getLong48b(breader);
@@ -324,7 +325,7 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
         order = getLong48b(breader);
 
         stat.c_notifyAll++;
-   	    return new NotifyAllNode(index,curTid,cond,pc); 
+   	    return new NotifyAllNode(index,curTid,cond,pc,order);
       case 20: // de-ref
         long ptrAddr = getLong48b(breader);
         order = getLong48b(breader);
