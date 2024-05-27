@@ -65,9 +65,8 @@ public class NewLoadingTask implements Callable<TLEventSeq> {
 
         	node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);
 
-            LOG.info(node.toString());
+            LOG.info("Synchronize " + node);
 
-        //LOG.debug(node.toString());//JEFF
 
         	if(node instanceof TBeginNode)
         	{

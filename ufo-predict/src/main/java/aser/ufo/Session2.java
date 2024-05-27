@@ -54,8 +54,8 @@ public class Session2 extends Session {
       //ADD THREAD FORK-JOIN ORDER TO PRUNE AWAY OBVIOUS CASES
       
       HashMap<MemAccNode, HashSet<AllocaPair>> candidateUafLs = indexer.getMachtedAcc();
-      
-      if(candidateUafLs.isEmpty())continue;
+
+//      if(candidateUafLs.isEmpty())continue;
       
       if (config.fast_detect)
       {

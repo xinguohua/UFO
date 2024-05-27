@@ -68,7 +68,7 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
             seq.numOfEvents++;
 
         		node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);//check consistency
-               LOG.debug(node.toString());
+               LOG.debug("aser.ufo.trace.LoadingTask2.load" + node);
 
           if (node instanceof TStartNode)
                     seq.newTids.add(((TStartNode)node).tidKid);
