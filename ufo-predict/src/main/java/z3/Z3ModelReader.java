@@ -99,8 +99,8 @@ public class Z3ModelReader {
 
   private static Z3Model process(Vector root) {
 
-    if (!root.elementAt(0).toString().equals("model"))
-      throw new IllegalStateException();
+//    if (!root.elementAt(0).toString().equals("model"))
+//      throw new IllegalStateException();
 
     Z3Model model = new Z3Model();
 

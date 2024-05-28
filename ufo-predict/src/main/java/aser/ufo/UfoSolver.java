@@ -17,11 +17,12 @@ import java.util.ArrayList;
  */
 public interface UfoSolver {
 
-  LongArrayList searchUafSchedule(Pair<DeallocNode, MemAccNode> p);
 
   void buildIntraThrConstr(Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map);
 
   void buildCausalConstrOpt(ArrayList<ReadNode> allReadNodes);
+
+  String buildReorderConstrOpt(ArrayList<ReadNode> allReadNodes, boolean influence);
 
   //  disable nLock engine
   void buildSyncConstr(Indexer index);

@@ -16,7 +16,10 @@ import z3.Z3Run;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static aser.ufo.Session.LOG;
 
 public class SimpleSolver implements UfoSolver {
 
@@ -47,8 +50,7 @@ public class SimpleSolver implements UfoSolver {
   public void declareVariables(ArrayList<AbstractNode> trace) {
     StringBuilder sb = new StringBuilder(trace.size() * 30);
     for (AbstractNode node : trace) {
-      long GID = node.gid;
-      String var = makeVariable(GID);
+      String var = makeVariable(node);
       sb.append("(declare-const ").append(var).append(" Int)\n");
       ct_vals++;
     }
@@ -64,13 +66,49 @@ public class SimpleSolver implements UfoSolver {
       if (nodes == null || nodes.size() < 3)
         continue;
       AbstractNode lastN = nodes.get(0);
-      String lastVar = makeVariable(lastN.gid);
+      String lastVar = makeVariable(lastN);
       for (int i = 1; i < nodes.size(); i++) {
         AbstractNode curN = nodes.get(i);
-        String var = makeVariable(curN.gid);
+        String var = makeVariable(curN);
         sb.append("(assert(< ").append(lastVar).append(' ').append(var).append("))\n");
         // no need to add edge for events from the same thread
         //reachEngine.addEdge(lastN, curN);
+        lastVar = var;
+      }
+    }
+    constrMHB = sb.toString();
+  }
+
+
+  public void rebuildIntraThrConstr(Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map, Pair<MemAccNode, MemAccNode> reorderPair) {
+    StringBuilder sb = new StringBuilder(UFO.INITSZ_L * 10);
+    for (ArrayList<AbstractNode> nodes : map.values()) {
+      // at least cBegin/cEnd
+      if (nodes == null || nodes.size() < 3)
+        continue;
+      AbstractNode lastN = nodes.get(0);
+      String lastVar = makeVariable(lastN);
+
+      boolean skip = false;
+      for (int i = 1; i < nodes.size(); i++) {
+        AbstractNode curN = nodes.get(i);
+        String var = makeVariable(curN);
+
+        // 检查是否在 reorderPair 的范围内
+        if (makeVariable(reorderPair.key).equals(lastVar)) {
+          skip = true;
+        }
+        if (skip) {
+          if (makeVariable(reorderPair.value).equals(var)) {
+            skip = false;
+          }
+          // 跳过排序约束
+          lastVar = var;
+          continue;
+        }
+
+        // 如果不在 reorderPair 的范围内，添加约束
+        sb.append("(assert(< ").append(lastVar).append(' ').append(var).append("))\n");
         lastVar = var;
       }
     }
@@ -94,7 +132,7 @@ public class SimpleSolver implements UfoSolver {
       short tid = node.tidKid;
       AbstractNode fnode = firstNodes.get(tid);
       if (fnode != null) {
-        sb.append("(assert (< ").append(makeVariable(node.gid)).append(' ').append(makeVariable(fnode.gid)).append(" ))\n");
+        sb.append("(assert (< ").append(makeVariable(node)).append(' ').append(makeVariable(fnode)).append(" ))\n");
       }
     }
     ArrayList<TJoinNode> joinNodeList = NewReachEngine.joinNodeList;
@@ -102,7 +140,7 @@ public class SimpleSolver implements UfoSolver {
       short tid = node.tid_join;
       AbstractNode lnode = lastNodes.get(tid);
       if (lnode != null) {
-        sb.append("(assert (< ").append(makeVariable(lnode.gid)).append(' ').append(makeVariable(node.gid)).append(" ))\n");
+        sb.append("(assert (< ").append(makeVariable(lnode)).append(' ').append(makeVariable(node)).append(" ))\n");
       }
     }
 
@@ -142,13 +180,13 @@ public class SimpleSolver implements UfoSolver {
           constr.setLength(0);
           int count = 0;
           if (p1UN != null) {
-            constr.append(" (< ").append(makeVariable(p1UN.gid)).append(' ')
-                .append(makeVariable(p2LK.gid)).append(' ').append(')');
+            constr.append(" (< ").append(makeVariable(p1UN)).append(' ')
+                .append(makeVariable(p2LK)).append(' ').append(')');
             count++;
           }
           if (p2UN != null) {
-            constr.append(" (< ").append(makeVariable(p2UN.gid)).append(' ')
-                .append(makeVariable(p1LK.gid)).append(' ').append(')');
+            constr.append(" (< ").append(makeVariable(p2UN)).append(' ')
+                .append(makeVariable(p1LK)).append(' ').append(')');
             count++;
           }
 
@@ -181,10 +219,10 @@ public class SimpleSolver implements UfoSolver {
       if (curLP.nLock == null)//
         continue;
       else
-        varCurLock = makeVariable(curLP.nLock.gid);
+        varCurLock = makeVariable(curLP.nLock);
 
       if (curLP.nUnlock != null)
-        varCurUnlock = makeVariable(curLP.nUnlock.gid);
+        varCurUnlock = makeVariable(curLP.nUnlock);
 
       short curLockTid = curLP.nLock.tid;
       LockPair lp1_pre = lastLockPairMap.get(curLockTid);
@@ -222,10 +260,10 @@ public class SimpleSolver implements UfoSolver {
           String var_lp2_b = "";
           String var_lp2_a = "";
 
-          var_lp2_b = makeVariable(lp2.nUnlock.gid);
+          var_lp2_b = makeVariable(lp2.nUnlock);
 
           if (lp2.nLock != null)
-            var_lp2_a = makeVariable(lp2.nLock.gid);
+            var_lp2_a = makeVariable(lp2.nLock);
 
           String cons_b;
 
@@ -297,7 +335,7 @@ public class SimpleSolver implements UfoSolver {
 
         // TODO: consider the case when preNode is not null
 
-        String var_r = makeVariable(rnode.gid);
+        String var_r = makeVariable(rnode);
 
         String cons_a = "";
         String cons_a_end = "";
@@ -309,7 +347,7 @@ public class SimpleSolver implements UfoSolver {
 
         for (int j = 0; j < writenodes_value_match.size(); j++) {
           WriteNode wnode1 = writenodes_value_match.get(j);
-          String var_w1 = makeVariable(wnode1.gid);
+          String var_w1 = makeVariable(wnode1);
 
           String cons_b_ = "(< " + var_w1 + " " + var_r + ")\n";
 
@@ -319,7 +357,7 @@ public class SimpleSolver implements UfoSolver {
           for (WriteNode wnode2 : writenodes) {
             if (!writenodes_value_match.contains(wnode2) && !reachEngine.canReach(wnode2, wnode1)
                 && !reachEngine.canReach(rnode, wnode2)) {
-              String var_w2 = makeVariable(wnode2.gid);
+              String var_w2 = makeVariable(wnode2);
 
               if (last_cons_d != null) {
                 cons_c += "(and " + last_cons_d;
@@ -383,11 +421,11 @@ public class SimpleSolver implements UfoSolver {
         long initValue = initValueMap.get(rnode.addr);
 
         if (initValue != -1 && rValue == initValue) {
-          String var_r = makeVariable(rnode.gid);
+          String var_r = makeVariable(rnode);
 
           for (WriteNode wnode3 : writenodes) {
             if (wnode3.tid != rnode.tid && !reachEngine.canReach(rnode, wnode3)) {
-              String var_w3 = makeVariable(wnode3.gid);
+              String var_w3 = makeVariable(wnode3);
 
               String cons_e = "(< " + var_r + " " + var_w3 + " )";
               csb.append("(assert \n").append(cons_e).append(" )\n");
@@ -402,30 +440,157 @@ public class SimpleSolver implements UfoSolver {
   }
 
 
-  public LongArrayList searchUafSchedule(Pair<DeallocNode, MemAccNode> p) {
-	  
-	  boolean doSolve = true;
-	  
-    MemAccNode accNode = p.value;
-    DeallocNode deNode = p.key;
+  public String buildReorderConstrOpt(ArrayList<ReadNode> allReadNodes, boolean influence) {
+
+    Long2ObjectOpenHashMap<ArrayList<WriteNode>> indexedWriteNodes = currentIndexer.getTSAddr2SeqWrite();
+
+    StringBuilder csb = new StringBuilder(1024);
+
+    for (ReadNode readNode : allReadNodes) {
+      if (readNode.tid == -1) {
+        continue;  // Skip invalid read nodes
+      }
+
+      ArrayList<WriteNode> writeNodes = indexedWriteNodes.get(readNode.addr);
+      if (writeNodes == null || writeNodes.isEmpty()) {
+        continue;  // Skip if there are no write nodes for the address
+      }
+
+      WriteNode preNode = null;
+      ArrayList<WriteNode> matchingWriteNodes = new ArrayList<WriteNode>(64);
+
+      // Find all write nodes that write the same value and are not reachable from the read node
+      for (WriteNode writeNode : writeNodes) {
+        if (writeNode.value == readNode.value && !reachEngine.canReach(readNode, writeNode)) {
+          if (writeNode.tid != readNode.tid) {
+            matchingWriteNodes.add(writeNode);
+          } else {
+            if (preNode == null || (preNode.gid < writeNode.gid && writeNode.gid < readNode.gid)) {
+              preNode = writeNode;
+            }
+          }
+        }
+      }
+      if (preNode != null) {
+        matchingWriteNodes.add(preNode);
+      }
+
+      if (!matchingWriteNodes.isEmpty()) {
+        String varRead = makeVariable(readNode);
+
+        StringBuilder consB = new StringBuilder();
+        StringBuilder consBEnd = new StringBuilder();
+
+        for (int i = 0; i < matchingWriteNodes.size(); i++) {
+          WriteNode wNode1 = matchingWriteNodes.get(i);
+          String varWrite1 = makeVariable(wNode1);
+
+          String consBPart = String.format("(< %s %s)\n", varWrite1, varRead);
+
+          StringBuilder consC = new StringBuilder();
+          StringBuilder consCEnd = new StringBuilder();
+          String lastConsD = null;
+
+          for (WriteNode wNode2 : writeNodes) {
+            if (!matchingWriteNodes.contains(wNode2) && !reachEngine.canReach(wNode2, wNode1) && !reachEngine.canReach(readNode, wNode2)) {
+              String varWrite2 = makeVariable(wNode2);
+              String consD = String.format("(or (< %s %s) (< %s %s ))\n", varRead, varWrite2, varWrite2, varWrite1);
+
+              if (lastConsD != null) {
+                consC.append("(and ").append(lastConsD);
+                consCEnd.append(" )");
+              }
+              lastConsD = consD;
+            }
+          }
+
+          if (lastConsD != null) {
+            consC.append(lastConsD);
+          }
+          consC.append(consCEnd);
+
+          if (consC.length() > 0) {
+            consBPart = String.format("(and %s %s )\n", consBPart, consC);
+          }
+
+          if (i + 1 < matchingWriteNodes.size()) {
+            consB.append("(or ").append(consBPart);
+            consBEnd.append(" )");
+          } else {
+            consB.append(consBPart);
+          }
+        }
+
+        consB.append(consBEnd);
+        if (!influence) {
+          csb.append(String.format("(assert %s)\n\n", consB));
+        } else {
+          csb.append(String.format("(assert (not %s))\n\n", consB));
+        }
+      } else {
+        // No matching value writes, ensure it reads the initial write
+        String varRead = makeVariable(readNode);
+
+        StringBuilder compositeConstraint = new StringBuilder();
+        boolean firstConstraint = true;
+
+        for (WriteNode wNode : writeNodes) {
+          if (wNode.tid != readNode.tid && !reachEngine.canReach(readNode, wNode)) {
+            String varWrite = makeVariable(wNode);
+            String consE = String.format("(< %s %s)", varRead, varWrite);
+            if (!firstConstraint) {
+              compositeConstraint.append(" ");
+            }
+            compositeConstraint.append(consE);
+            firstConstraint = false;
+          }
+        }
+
+        if (compositeConstraint.length() > 0) {
+          if (!influence){
+            csb.append(String.format("(assert (and %s))\n", compositeConstraint));
+          }else {
+            csb.append(String.format("(assert (not (and %s)))\n", compositeConstraint));
+          }
+        }
+      }
+    }
+    return csb.toString();
+  }
+
+
+
+
+// 依赖
+  public ArrayList<String> searchReorderSchedule(Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map, Pair<MemAccNode, MemAccNode> switchPair, Pair<MemAccNode, MemAccNode> dependPair) {
+
+    boolean doSolve = true;
+
+    MemAccNode switchNode1 = switchPair.key;
+    MemAccNode switchNode2 = switchPair.value;
+
+    MemAccNode dependNode1 = dependPair.key;
+    MemAccNode dependNode2 = dependPair.value;
 
     //only make sure those reads that
     //accNode and deNode depend on are consistent
-    
-    ArrayList<ReadNode> allReadNodes = new ArrayList<ReadNode>();
-    
-   currentIndexer.getTSDependentSeqRead(allReadNodes, accNode);
-    currentIndexer.getTSDependentSeqRead(allReadNodes, deNode);
+    ArrayList<ReadNode> dependReadNodes = new ArrayList<ReadNode>();
+    currentIndexer.getReorderDependentRead(dependReadNodes, dependNode1);
+    String obeyStr = buildReorderConstrOpt(dependReadNodes, false);
 
-    buildCausalConstrOpt(allReadNodes);
+    ArrayList<ReadNode> changeReadNodes = new ArrayList<ReadNode>();
+    currentIndexer.getReorderDependentRead(changeReadNodes, dependNode2);
+    buildReorderConstrOpt(changeReadNodes, true);
+    String violateStr = buildReorderConstrOpt(changeReadNodes, true);
 
-    
-    String varAcc = makeVariable(accNode.gid);
-    String varDe = makeVariable(deNode.gid);
+    // tid: a1 < a2 < a3
+    rebuildIntraThrConstr(map, switchPair);
+    String switchNode1Str = makeVariable(switchNode1);
+    String switchNode2Str = makeVariable(switchNode2);
 
-    String csb = CONS_SETLOGIC + constrDeclare + constrMHB + constrSync + constrCasual +
-        "(assert (< " + varDe + " " + varAcc + " ))" +
-        CONS_CHECK_GETMODEL;
+    String csb = CONS_SETLOGIC + constrDeclare + constrMHB + constrSync + obeyStr + violateStr +
+            "(assert (< " + switchNode2Str + " " + switchNode1Str + " ))" +
+            CONS_CHECK_GETMODEL;
 
     synchronized (ct_constr) {
       ct_constr.push(UFO.countMatches(csb, "assert"));
@@ -435,7 +600,8 @@ public class SimpleSolver implements UfoSolver {
       return null;
 
     Z3Run task = new Z3Run(config, taskId.getAndIncrement());
-    LongArrayList ls =  task.buildSchedule(csb);
+    ArrayList<String> ls =  task.buildSchedule(csb);
+    LOG.debug("result:{}", ls);
     return ls;
   }
 
@@ -446,13 +612,13 @@ public class SimpleSolver implements UfoSolver {
 
   public boolean mustUaF(boolean doSolve, MemAccNode accNode, HashSet<AllocaPair> pairs) {
 
-    String varAcc = makeVariable(accNode.gid);
+    String varAcc = makeVariable(accNode);
     StringBuilder sb = new StringBuilder(pairs.size() * 20);
     sb.append(CONS_SETLOGIC).append(constrDeclare).append(constrMHB).append(constrSync).append(constrCasual)
       .append("(assert (or ");
     for (AllocaPair pair : pairs) {
-      String varAlloc = makeVariable(pair.allocNode.gid);
-      String varDe = makeVariable(pair.deallocNode.gid);
+      String varAlloc = makeVariable(pair.allocNode);
+      String varDe = makeVariable(pair.deallocNode);
       sb.append("(and (< ").append(varAlloc).append(" ").append(varAcc)
           .append(") (< ").append(varAcc).append(" ").append(varDe).append("))");
     }
@@ -478,6 +644,9 @@ public class SimpleSolver implements UfoSolver {
 
   protected static String makeVariable(long GID) {
     return "x" + GID;
+  }
+  protected static String makeVariable(AbstractNode node) {
+    return "x" + node.gid + "-"+ node.tid;
   }
 
   public void reset() {

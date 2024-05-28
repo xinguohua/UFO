@@ -1,16 +1,16 @@
 package aser.ufo;
 
 import aser.ufo.misc.Pair;
+import aser.ufo.misc.RawReorder;
 import aser.ufo.misc.RawUaFCpx;
 import aser.ufo.misc.RawUaf;
 import aser.ufo.trace.AllocaPair;
-import aser.ufo.trace.FileInfo;
 import aser.ufo.trace.Indexer;
-import aser.ufo.trace.LoadingTask2;
 import aser.ufo.trace.TLEventSeq;
 import config.Configuration;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
+import trace.AbstractNode;
 import trace.DeallocNode;
 import trace.MemAccNode;
 
@@ -110,12 +110,17 @@ public class Session2 extends Session {
           .append("   candidateUafLs: " + candidateUafLs.size()).append('\n');
 
 
-      Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>> iter = candidateUafLs.entrySet().iterator();
-      while (iter.hasNext()) {
-        List<RawUaf> ls = solveUafConstr(iter, UFO.PAR_LEVEL);
+//      Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>> iter = candidateUafLs.entrySet().iterator();
+//      while (iter.hasNext()) {
+//        List<RawUaf> ls = solveUafConstr(iter, UFO.PAR_LEVEL);
+//        if (ls != null && ls.size() > 0)
+//          outputUafLs(ls, indexer);
+//      }
+
+        List<RawReorder> ls = solveReorderConstr(indexer.getTSTid2sqeNodes(),indexer.getReorderPairMap().entrySet().iterator(), UFO.PAR_LEVEL);
         if (ls != null && ls.size() > 0)
-          outputUafLs(ls, indexer);
-      }
+//          outputUafLs(ls, indexer);
+
 
       if (solver.ct_constr.size() > 0) {
         ct_vals.push(solver.ct_vals);
@@ -316,48 +321,44 @@ public void printTraceStats() {
     System.out.println(((float)cm / candidateUafLs.size()) + "    " + ct);
   }
 
-  public List<RawUaf> solveUafConstr(Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>>  iter, int limit) {
 
-    CompletionService<RawUaf> cexe = new ExecutorCompletionService<RawUaf>(exe);
+
+
+
+  public List<RawReorder> solveReorderConstr(final Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map, Iterator<Map.Entry<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>>>  iter, int limit) {
+
+    CompletionService<RawReorder> cexe = new ExecutorCompletionService<RawReorder>(exe);
     int task = 0;
     while (iter.hasNext() && limit > 0) {
       limit--;
-      Map.Entry<MemAccNode, HashSet<AllocaPair>> e = iter.next();
-      final MemAccNode acc = e.getKey();
-      final HashSet<AllocaPair> pairs = e.getValue();
-      cexe.submit(new Callable<RawUaf>() {
+      Map.Entry<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>> e = iter.next();
+      final Pair<MemAccNode, MemAccNode> switchPair = e.getKey();
+      final Pair<MemAccNode, MemAccNode> dependPair = e.getValue();
+
+      cexe.submit(new Callable<RawReorder>() {
         @Override
-        public RawUaf call() throws Exception {
-        	LongArrayList bugSchedule;
-          if (pairs.size() == 1) {
-            AllocaPair p = pairs.iterator().next();
-            bugSchedule = solver.searchUafSchedule(new Pair<DeallocNode, MemAccNode>(p.deallocNode, acc));
-            if (bugSchedule != null)
-              return new RawUaf(acc, p.deallocNode, bugSchedule);
-            else return null;
-          } else {
-            if (solver.mustUaF(acc, pairs))
-              return new RawUaFCpx(acc, pairs);
-            else return null;
-          }
+        public RawReorder call() throws Exception {
+          ArrayList<String> bugSchedule = solver.searchReorderSchedule(map, switchPair, dependPair);
+          if (bugSchedule != null) return new RawReorder(switchPair, dependPair, bugSchedule);
+          else return null;
+
         }
       });
       task++;
     }
 
-    ArrayList<RawUaf> ls = new ArrayList<RawUaf>(task);
+    ArrayList<RawReorder> ls = new ArrayList<RawReorder>(task);
     try {
       while (task-- > 0) {
-        Future<RawUaf> f = cexe.take(); //blocks if none available
-        RawUaf uaf = f.get();
-        if (uaf != null)
-          ls.add(uaf);
+        Future<RawReorder> f = cexe.take(); //blocks if none available
+        RawReorder rawReorder = f.get();
+        if (rawReorder != null)
+          ls.add(rawReorder);
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
     return ls;
   }
-
 
 }

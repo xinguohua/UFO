@@ -163,7 +163,7 @@ public class Configuration {
       fast_detect = true;
 
       schedule = cmd.hasOption(opt_schedule);
-
+      schedule = true;
 
       rmm_pso = cmd.hasOption(opt_rmm_pso);
       //rmm_pso = true;

@@ -22,7 +22,7 @@ import java.util.concurrent.*;
 /**
  * one session for one execution
  */
-public class Session {
+public abstract class Session {
 
   protected static final Logger LOG = LoggerFactory.getLogger(Session.class);
 
@@ -87,64 +87,7 @@ public class Session {
     }
   }
 
-  public void start() {
-    sessionID = 0;
-    uafID = 0;
 
-    while (traceLoader.hasNext()) {
-      sessionID++;
-      Indexer indexer = new Indexer();
-      traceLoader.populateIndexer(indexer);
-
-      int sac = indexer.metaInfo.sharedAddrs.size();
-      if (sac < 1 && !LOAD_ONLY)
-        continue;
-      int cac = indexer.getTSAcc2Dealloc().size();
-      if (cac < 1 && !LOAD_ONLY)
-        continue;
-
-//      List<Pair<DeallocNode, MemAccNode>> candidateUafLs = findCandidateUafLs2(indexer);
-      List<Pair<DeallocNode, MemAccNode>> candidateUafLs = findCandidateUafLs(indexer);
-      if (candidateUafLs.isEmpty() && !LOAD_ONLY)
-        continue;
-
-      if (LOAD_ONLY) {
-        pause(4, sessionID + "#   sac " + sac  + "     all " + indexer.getAllNodeSeq().size());
-        System.out.println(indexer.metaInfo);
-        solver.reset();
-        System.gc();
-        continue;
-      }
-
-      prepareConstraints(indexer);
-
-      LOG.info("Shared address: {} \t Conflicting access: {} \t candidateUafLs: {}", sac, cac, candidateUafLs.size());
-
-      writerD.append("#" + sessionID + " Session")
-          .append("   candidateUafLs: " + candidateUafLs.size()).append('\n');
-
-      if (candidateUafLs.size() > UFO.PAR_LEVEL) {
-        List<List<Pair<DeallocNode, MemAccNode>>> lss = Lists.partition(candidateUafLs, UFO.PAR_LEVEL);
-        for (List<Pair<DeallocNode, MemAccNode>> ls : lss) {
-          solveUaf(indexer, ls);
-        }
-      } else {
-        solveUaf(indexer, candidateUafLs);
-      }
-
-      solver.reset(); // release constraints for this round
-      writerD.append("\r\n");
-    } // while
-
-    exe.shutdown();
-    try {
-      writerD.close();
-      exe.awaitTermination(10, TimeUnit.SECONDS);
-    } catch (Exception e) {
-      LOG.error(" error finishing ", e);
-    }
-    exe.shutdownNow();
-  }
 
   protected void prepareConstraints(Indexer indexer) {
     solver.setReachEngine(indexer.getReachEngine());
@@ -152,26 +95,10 @@ public class Session {
     solver.declareVariables(indexer.getAllNodeSeq());
     // start < tid_first
     solver.buildSyncConstr(indexer);
-    // tid: a1 < a2 < a3
-    solver.buildIntraThrConstr(indexer.getTSTid2sqeNodes());
-    
-//    indexer.prepareNorm(); // early release index, give memory to z3
   }
 
 
-  protected void solveUaf(Indexer indexer, List<Pair<DeallocNode, MemAccNode>> candidateUafLs) {
-//    filterKnownUaf(candidateUafLs);
 
-    List<RawUaf> uafLs = solveUafConstr(candidateUafLs);
-    if (uafLs.size() < 1)
-      return;
-    LOG.info("Solved UAF: {}", uafLs.size());
-    if (uafLs.size() < 1)
-      return;
-    writerD.append("Solved UAF: " + uafLs.size()).append("\r\n\r\n");
-//        uafLs = trimFP(uafLs, candidateUafLs);
-    outputUafLs(uafLs, indexer);
-  }
 
   protected static void pause(int sec, String msg) {
     try {
@@ -203,6 +130,8 @@ public class Session {
   }
 
   private HashSet<Pair<AddrInfo, AddrInfo>> knownUAF = new HashSet<Pair<AddrInfo, AddrInfo>>(250);
+
+  public abstract void start();
 
   public void outputUafLs(List<RawUaf> uafLs, Indexer indexer) {
     LOG.info("Use-After-Free bugs: {}", uafLs.size());
@@ -439,32 +368,4 @@ public class Session {
   }
 
 
-  public List<RawUaf> solveUafConstr(List<Pair<DeallocNode, MemAccNode>> causalConstrLs) {
-
-    CompletionService<RawUaf> cexe = new ExecutorCompletionService<RawUaf>(exe);
-    for (final Pair<DeallocNode, MemAccNode> pair : causalConstrLs) {
-      cexe.submit(new Callable<RawUaf>() {
-        public RawUaf call() throws Exception {
-        	LongArrayList bugSchedule = solver.searchUafSchedule(pair);
-          if (bugSchedule != null)
-            return new RawUaf(pair.value, pair.key, bugSchedule);
-          else return null;
-        }
-      });
-    }
-
-    int count = causalConstrLs.size();
-    ArrayList<RawUaf> ls = new ArrayList<RawUaf>(count);
-    try {
-      while (count-- > 0) {
-        Future<RawUaf> f = cexe.take(); //blocks if none available
-        RawUaf uaf = f.get();
-        if (uaf != null)
-          ls.add(uaf);
-      }
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    return ls;
-  }
 }

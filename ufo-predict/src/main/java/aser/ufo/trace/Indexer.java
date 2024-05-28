@@ -62,6 +62,9 @@ public class Indexer {
     protected Short2ObjectOpenHashMap<AbstractNode> tidFirstNode = new Short2ObjectOpenHashMap<AbstractNode>(UFO.INITSZ_S / 2);
     protected Short2ObjectOpenHashMap<AbstractNode> tidLastNode = new Short2ObjectOpenHashMap<AbstractNode>(UFO.INITSZ_S / 2);
 
+    protected Map<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>> reorderPairMap = new HashMap<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>>();
+
+
     private static class SharedAccIndexes {
 
       // z3 declare var, all shared acc and other nodes
@@ -170,6 +173,8 @@ public class Indexer {
       // 2. second pass:
       LongOpenHashSet sharedAddrSet = findSharedAcc();
 
+      Pair<MemAccNode, MemAccNode> switchPair = new Pair<MemAccNode, MemAccNode>();
+      Pair<MemAccNode, MemAccNode> dependentPair = new Pair<MemAccNode, MemAccNode>();
       // 3. third pass, handle shared mem acc (index: addr tid dealloc allnode)
       for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
         short tid = e.getShortKey();
@@ -188,6 +193,21 @@ public class Indexer {
               shared.allNodeSeq.add(node);
               tidNodes.add(memNode);
               handleTSMemAcc(tid, memNode);
+
+
+
+              if (memNode.order == 500) {
+                switchPair.key = memNode;
+              }
+              if (memNode.order == 501) {
+                switchPair.value = memNode;
+              }
+              if (memNode.order == 1048) {
+                dependentPair.key = memNode;
+              }
+              if (memNode.order == 1051) {
+                dependentPair.value = memNode;
+              }
             }
 
           } else if (!(node instanceof FuncEntryNode)
@@ -199,6 +219,7 @@ public class Indexer {
         } // for each node in thread
       } // for each thread
 
+      reorderPairMap.put(switchPair, dependentPair);
 
       metaInfo.sharedAddrs = sharedAddrSet;
       metaInfo.countAllNodes = getAllNodeSeq().size();
@@ -727,12 +748,56 @@ public class Indexer {
     		
     }
 
-//  public ArrayList<WriteNode> getSeqWrite() {
-//    return seqWrite;
-//  }
+
+    public void getReorderDependentRead(ArrayList<ReadNode> allReadNodes, MemAccNode node) {
+
+      ArrayList<ReadNode> tidNodes = shared.tid2seqReads.get(node.tid);
+      if(tidNodes==null||tidNodes.isEmpty()) return;
+
+      int min = 0;
+      int max = tidNodes.size()-1;
+
+      //find the latest read before this node
+      int id=(min+max)/2;
+
+      while(true)
+      {
+        ReadNode tmp = tidNodes.get(id);
+        if(tmp.gid<node.gid)
+        {
+          if(id+1>max||tidNodes.get(++id).gid>node.gid) break;
+          min=id;
+          id=(min+max)/2;
+        }
+        else if (tmp.gid>node.gid)
+        {
+          if(id-1<min || tidNodes.get(--id).gid<node.gid) break;
+          max=id;
+          id=(min+max)/2;
+        }
+        else
+        {
+          //exclude itself
+          break;
+        }
+      }
+
+      if(tidNodes.get(id).gid<node.gid&&id<max)
+        id++;//special case
+
+
+      for(int i=0;i<=id;i++)
+        if (tidNodes.get(i).addr == node.addr){
+          allReadNodes.add(tidNodes.get(i));
+        }
+    }
 
     public HashMap<MemAccNode, HashSet<AllocaPair>> getMachtedAcc() {
       return allocator.machtedAcc;
+    }
+
+    public Map<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>> getReorderPairMap() {
+      return reorderPairMap;
     }
 
     public HashMap<MemAccNode, DeallocNode> getTSAcc2Dealloc() {

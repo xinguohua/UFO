@@ -35,7 +35,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.*;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import config.Configuration;
 import aser.ufo.UFO;
@@ -63,7 +65,7 @@ protected static String Z3_SMT2 = ".z3smt2";
   protected String CMD;
 
   public Z3Model model;
-  public LongArrayList schedule;
+  public ArrayList<String> schedule;
 
   public Z3Run(Configuration config, int id) {
     try {
@@ -100,7 +102,7 @@ protected static String Z3_SMT2 = ".z3smt2";
    * solve constraint "msg"
    * @param msg
    */
-  public LongArrayList buildSchedule(String msg) {
+  public ArrayList<String> buildSchedule(String msg) {
 
 //    System.out.println(">>>Z3Run buildSchedule:" + msg);
 
@@ -121,7 +123,7 @@ protected static String Z3_SMT2 = ".z3smt2";
     	  	if(config.schedule)
     	  		schedule = computeSchedule2(model);
     	  	else
-    	  		schedule =  new LongArrayList(); 
+    	  		schedule =  new ArrayList<String>();
     	  		
       }
       //String z3OutFileName = z3OutFile.getAbsolutePath();
@@ -144,23 +146,31 @@ protected static String Z3_SMT2 = ".z3smt2";
     return Long.parseLong(name.substring(1));
   }
 
-  public LongArrayList computeSchedule2(Z3Model model) {
-	    LongArrayList ls = new LongArrayList(model.getMap().size());
-	    IntArrayList orderls = new IntArrayList(model.getMap().size());
-    for (Entry<String, Object> entryModel : model.getMap().entrySet()) {
-      String op = entryModel.getKey();
-      Long gid = varName2GID(op);
-      int order = ((Number) entryModel.getValue()).intValue();
-      int index=0;
-      
-      for(;index<ls.size();index++)
-    	  	if(order<=orderls.get(index))
-    	  		break;
-      orderls.add(index,order);
-      ls.add(index, gid);
+  public ArrayList<String> computeSchedule2(Z3Model model) {
+    // Extract the map from the model
+    Map<String, Object> map = model.getMap();
+
+    // Create a list from elements of the map
+    List<Map.Entry<String, Object>> list = new ArrayList<Map.Entry<String, Object>>(map.entrySet());
+
+    // Sort the list
+    Collections.sort(list, new Comparator<Map.Entry<String, Object>>() {
+      @Override
+      public int compare(Map.Entry<String, Object> o1, Map.Entry<String, Object> o2) {
+        Comparable value1 = (Comparable) o1.getValue();
+        Comparable value2 = (Comparable) o2.getValue();
+        return value1.compareTo(value2);
+      }
+    });
+
+    // Create a list of sorted keys
+    List<String> sortedKeys = new ArrayList<String>();
+    for (Map.Entry<String, Object> entry : list) {
+      sortedKeys.add(entry.getKey());
     }
-     
-    return ls;
+
+    // Convert the sorted list to an ArrayList and return
+    return new ArrayList<String>(sortedKeys);
   }
   /**
    * Given the model of solution, return the corresponding schedule
