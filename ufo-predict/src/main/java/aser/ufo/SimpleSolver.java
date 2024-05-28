@@ -16,6 +16,7 @@ import z3.Z3Run;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,11 +50,20 @@ public class SimpleSolver implements UfoSolver {
   @Override
   public void declareVariables(ArrayList<AbstractNode> trace) {
     StringBuilder sb = new StringBuilder(trace.size() * 30);
+    List<String> variables = new ArrayList<String>();
+
     for (AbstractNode node : trace) {
       String var = makeVariable(node);
       sb.append("(declare-const ").append(var).append(" Int)\n");
+      variables.add(var);
       ct_vals++;
     }
+    for (int i = 0; i < variables.size(); i++) {
+      for (int j = i + 1; j < variables.size(); j++) {
+        sb.append("(assert (not (= ").append(variables.get(i)).append(" ").append(variables.get(j)).append(")))\n");
+      }
+    }
+
     constrDeclare = sb.toString();
     reachEngine = new NewReachEngine();
   }
@@ -84,7 +94,7 @@ public class SimpleSolver implements UfoSolver {
     StringBuilder sb = new StringBuilder(UFO.INITSZ_L * 10);
     for (ArrayList<AbstractNode> nodes : map.values()) {
       // at least cBegin/cEnd
-      if (nodes == null || nodes.size() < 3)
+      if (nodes == null || nodes.size() <= 1)
         continue;
       AbstractNode lastN = nodes.get(0);
       String lastVar = makeVariable(lastN);
