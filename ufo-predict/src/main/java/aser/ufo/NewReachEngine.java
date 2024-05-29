@@ -69,14 +69,12 @@ public static void saveToWaitNotifyList(IWaitNotifyNode node) {
 public static void saveToStartNodeList(TStartNode node)
 {
 	addToOrderedSyncList(node);
-	
-    //thrStartNodeList.add(node);
+    thrStartNodeList.add(node);
 }
 public static void saveToJoinNodeList( TJoinNode node)
 {
 	addToOrderedSyncList(node);
-
-    //joinNodeList.add(node);
+	joinNodeList.add(node);
 }
 public static void saveToThreadFirstNode(short tid, TBeginNode node)
 {
@@ -198,7 +196,7 @@ public static void postprocessing()
 //      }
 }
 
-  private static HashMap<Long,VectorClock> long2VCs = new HashMap<Long, VectorClock>();
+  private static HashMap<String,VectorClock> sync2VCs = new HashMap<String, VectorClock>();
   private static HashMap<Short,VectorClock> tidToVCs = new HashMap<Short, VectorClock>();
 
   private static Short2ObjectOpenHashMap<ArrayList<Long>> tid2GidsMap =
@@ -290,8 +288,8 @@ public static void postprocessing()
 //    long toID = Bytes.longs.add(to.tid, to.gid);
     
     //save vector clock
-    long2VCs.put(new Long(from.gid), vc1);
-    long2VCs.put(new Long(to.gid), vc2);
+    sync2VCs.put(String.valueOf(from.tid + from.gid), vc1);
+	sync2VCs.put(String.valueOf(to.tid + to.gid), vc2);
   }
 
   public static boolean canReach(AbstractNode n1, AbstractNode n2) {
@@ -320,8 +318,8 @@ public static void postprocessing()
 //    	long key1 = Bytes.longs.add(tid1, gid1_down);
 //    	long key2 = Bytes.longs.add(tid2, gid2_up);
 
-     	VectorClock vc1 = 	long2VCs.get(gid1_down);
-     	VectorClock vc2 = 	long2VCs.get(gid2_up);
+     	VectorClock vc1 = 	sync2VCs.get(String.valueOf(tid1 + gid1_down));
+     	VectorClock vc2 = 	sync2VCs.get(String.valueOf(tid2 + gid2_up));
 
     	if(vc1.happensBefore(vc2))
     		return true;

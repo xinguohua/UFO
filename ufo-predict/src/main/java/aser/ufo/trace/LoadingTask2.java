@@ -1,5 +1,6 @@
 package aser.ufo.trace;
 
+import aser.ufo.NewReachEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import trace.*;
@@ -70,24 +71,21 @@ public class LoadingTask2 implements Callable<TLEventSeq> {
         		node.gid = (int)Bytes.longs.add(tid, seq.numOfEvents);//check consistency
                LOG.debug("aser.ufo.trace.LoadingTask2.load" + node);
 
-          if (node instanceof TStartNode)
-                    seq.newTids.add(((TStartNode)node).tidKid);
-                
+          if (node instanceof TStartNode) {
+            seq.newTids.add(((TStartNode) node).tidKid);
+          }
+
           //DEBUG
-        		if(node instanceof ISyncNode)
-        		{
-        			//LOG.debug(node.toString());//JEFF
-        			//skip isync node??
-        		}
-        		else
-        		{
-	          seq.events.add(node);
-	
-	          if (node instanceof MemAccNode) {
-	            lastMemAcc = (MemAccNode) node;
-	          }
-	          eCount++;
-        		}
+          if (node instanceof ISyncNode) {
+            seq.events.add(node);
+          } else {
+            seq.events.add(node);
+
+            if (node instanceof MemAccNode) {
+              lastMemAcc = (MemAccNode) node;
+            }
+            eCount++;
+          }
         }
         bnext = br.read();
       }

@@ -134,8 +134,8 @@ public class SimpleSolver implements UfoSolver {
   public void buildSyncConstr(Indexer index) {
     StringBuilder sb = new StringBuilder(UFO.INITSZ_S * 10);
 
-    Short2ObjectOpenHashMap<AbstractNode> firstNodes = index.getTidFirstNode();
-    Short2ObjectOpenHashMap<AbstractNode> lastNodes = index.getTidLastNode();
+    Short2ObjectOpenHashMap<AbstractNode> firstNodes = NewReachEngine.tidFirstNode;
+    Short2ObjectOpenHashMap<AbstractNode> lastNodes = NewReachEngine.tidLastNode;
 
     ArrayList<TStartNode> thrStartNodeList = NewReachEngine.thrStartNodeList;
     for (TStartNode node : thrStartNodeList) {
