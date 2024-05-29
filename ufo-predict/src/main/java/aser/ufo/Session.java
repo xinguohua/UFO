@@ -41,9 +41,6 @@ public class Session {
     PrintWriter writerD;
     PrintWriter writerB;
 
-    int sessionID;
-    int uafID;
-
     public Session(Configuration c) {
         config = c;
         exe = Executors.newFixedThreadPool(UFO.PAR_LEVEL);
@@ -93,14 +90,11 @@ public class Session {
     }
 
     public void start() {
-        traceLoader.preprocessWaitNotify();//JEFF
-        printTraceStats();//JEFF
-
-        sessionID = 0;
-        uafID = 0;
+        traceLoader.loadTraceEvent();
+        traceLoader.preprocessSycn();
+        printTraceStats();
 
         while (traceLoader.hasNext()) {
-            sessionID++;
             Indexer indexer = new Indexer();
             traceLoader.populateIndexer(indexer);
 
@@ -156,7 +150,6 @@ public class Session {
 
                 ct_candidataUaF.add(candidateUafLs.size());
 
-                writerD.append("#" + sessionID + " Session").append("   candidateUafLs: " + candidateUafLs.size()).append('\n');
 
 
 //      Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>> iter = candidateUafLs.entrySet().iterator();
@@ -187,9 +180,7 @@ public class Session {
 
 
         }
-//    System.out.println(__c1 + "   " + __c2 + "   " + __c3);
-//    System.out.println(config.window_size +  "  Time:  " + ((System.currentTimeMillis() - _t1) / 1000));
-        _PrintStat();
+
         exe.shutdown();
         try {
             writerD.close();
@@ -229,30 +220,6 @@ public class Session {
     }
 
 
-    public void _PrintStat() {
-        int max_max = _Max_total(ct_max_constr).key;
-        Pair<Integer, Long> mc_constr = _Max_total(ct_constr);
-
-        System.out.println("\r\n=================================\r\n");
-        System.out.printf("Session %d | avg vals %d | constr max %d  avg %d | total constr %d | total candidate UaF %d \r\n", sessionID, _Avg(ct_vals), max_max, _Avg(ct_constr), mc_constr.value, _Max_total(ct_candidataUaF).value);
-
-        System.out.println("Solved UAF: " + ct_uaf);
-
-
-        //printTraceStats();
-
-
-//    public long c_tstart = 0;
-//    public long c_join = 0;
-//    public long c_lock = 0;
-//    public long c_unlock = 0;
-//    public long c_alloc = 0;
-//    public long c_dealloc = 0;
-//    public long[] c_read = new long[4];
-//    public long[] c_write = new long[4];
-//    public long c_range_w = 0;
-//    public long c_range_r = 0;
-    }
 
     public void printTraceStats() {
         System.out.println("Start Events: " + TLEventSeq.stat.c_tstart);
@@ -276,15 +243,9 @@ public class Session {
         for (int i = 1; i < 4; i++)
             writes += TLEventSeq.stat.c_write[i];
 
-//    System.out.println("Read Events: " + reads);
-//    System.out.println("Write Events: " + writes);
-//    System.out.println("RRead Events: " + TLEventSeq.stat.c_range_r);
-//    System.out.println("RWrite Events: " + TLEventSeq.stat.c_range_w);
-
         long toreads = reads + TLEventSeq.stat.c_range_r;
         long towrites = writes + TLEventSeq.stat.c_range_w;
 
-        //long total = totalsync+TLEventSeq.stat.c_alloc+TLEventSeq.stat.c_dealloc+toreads+towrites;
 
         System.out.println("Total Sync Events: " + totalsync);
         System.out.println("Total Alloc Events: " + TLEventSeq.stat.c_alloc);
