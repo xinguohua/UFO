@@ -33,23 +33,9 @@ public class Indexer {
     public static final int PRE_NORM = 3;
     protected volatile int state_ = PRE_LOAD;
 
-    public int getState() {
-      return state_;
-    }
-    // addr -> tid mem_acc
-//  protected Long2ObjectOpenHashMap<Int2ObjectOpenHashMap<ArrayList<MemAccNode>>> addr2Tid2seqAcc =
-//      new Long2ObjectOpenHashMap<Int2ObjectOpenHashMap<ArrayList<MemAccNode>>>(UFO.INITSZ_L * 2);
-
-    // track malloc & free,  temp tree, deleted later
-    // addr to node
-//  protected TreeMap<Long, AbstractNode> _allocationTree = new TreeMap<Long, AbstractNode>();
-
-    // index not needed
-//  protected HashMap<Long, ArrayList<MemAccNode>> dealloc2seqAcc = new HashMap<Long, ArrayList<MemAccNode>>(INITSZ_L);
     protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> _rawTid2seq = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(UFO.INITSZ_S / 2);
 
     protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> tid2CallSeq = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(UFO.INITSZ_S / 2);
-//  protected Short2ObjectOpenHashMap<LongArrayList> tid2CallSeq = new Short2ObjectOpenHashMap<LongArrayList>(UFO.INITSZ_S / 2);
 
     public TraceMetaInfo metaInfo = new TraceMetaInfo();
 
@@ -434,16 +420,6 @@ public class Indexer {
       }
     }
 
-//  protected static void addAddr2TidWrite(Long2ObjectOpenHashMap<IntOpenHashSet> _addr2TidWrites,
-//                                int tid, long addr) {
-//    IntOpenHashSet tidSetW = _addr2TidWrites.get(addr);
-//    if (tidSetW == null) {
-//      tidSetW = new IntOpenHashSet(UFO.INITSZ_S);
-//      _addr2TidWrites.put(addr, tidSetW);
-//    }
-//    tidSetW.add(tid);
-//  }
-
     Long2ObjectOpenHashMap<ArrayList<LockPair>> addr2LockPairLs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(UFO.INITSZ_S);
 
     protected void handleSync2(short tid, ISyncNode node) {
@@ -814,27 +790,6 @@ public class Indexer {
       return reachEngine;
     }
 
-//  public List<Pair<DeallocNode, MemAccNode>> getUafList() {
-//    Set<Map.Entry<MemAccNode, DeallocNode>> acc2DellocSets = shared.acc2Dealloc.entrySet();
-//    final ArrayList<Pair<DeallocNode, MemAccNode>> uafLs = new ArrayList<Pair<DeallocNode, MemAccNode>>(acc2DellocSets.size());
-//    for (Map.Entry<MemAccNode, DeallocNode> e : acc2DellocSets) {
-//      final MemAccNode accNode = e.getKey();
-//      final DeallocNode deNode = e.getValue();
-//      uafLs.add(new Pair<DeallocNode, MemAccNode>(deNode, accNode));
-//    }
-//    return uafLs;
-//  }
-
-
-    public void trim() {
-      shared.trim();
-
-      tidFirstNode.trim();
-      tidLastNode.trim();
-      this._syncNodesMap.trim();
-      this._tid2LockPairs.trim();
-      this._tid2SyncStack.trim();
-    }
 
 
   }
