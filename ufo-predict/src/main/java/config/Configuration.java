@@ -102,38 +102,14 @@ public class Configuration {
   public Configuration(String[] args) {
 
     try {
-
-//      if (args.length == 0) {
-//        printUsageAndExit();
-//      }
-
-      //emp.Example stringbuffer.StringBufferTest
-
-      //String[] args2 = {"abc","-maxlen","10000","-noschedule","-nobranch"};
-
       // create Options object
       Options options = new Options();
-
-      // add t option
-//      options.addOption(opt_no_schedule, false, "not report schedule");
-//      options.addOption(opt_no_branch, false, "use no branch model");
-//      options.addOption(opt_no_volatile, false, "exclude volatile variables");
-//      options.addOption(opt_all_consistent, false, "require all read-write consistent");
-//      options.addOption(opt_rmm_pso, false, "PSO memory model");
-//      options.addOption(opt_smtlib1, false, "use constraint format smtlib v1.2");
-//      options.addOption(opt_optrace, false, "optimize race detection");
-//      options.addOption(opt_allrace, false, "check all races");
-//
-//      options.addOption(opt_constraint_outdir, false, "constraint file directory");
-//      options.addOption(opt_timeout, false, "rvpredict timeout in seconds");
 
       options.addOption(opt_solver_timeout, true, "solver timeout in seconds");
       options.addOption(opt_solver_memory, true, "solver memory fsize in MB");
       options.addOption(opt_window_size, true, "window fsize");
       options.addOption(opt_tdir, true, "trace dir");
       options.addOption(opt_symbolizer, true, "symbolizer");
-
-
       options.addOption(opt_help, false, "print help info");
 
       CommandLineParser parser = new BasicParser();
@@ -141,18 +117,18 @@ public class Configuration {
 
       String strWinSz = cmd.getOptionValue(opt_window_size, "50000");
       if (strWinSz != null)
-        window_size = Long.valueOf(strWinSz);
+        window_size = Long.parseLong(strWinSz);
       else
         window_size = 50000;
 
       String z3timeout = cmd.getOptionValue(opt_solver_timeout, default_solver_timeout);
-      solver_timeout = Long.valueOf(z3timeout);
+      solver_timeout = Long.parseLong(z3timeout);
 
       String z3memory = cmd.getOptionValue(opt_solver_memory, default_solver_memory);
-      solver_memory = Long.valueOf(z3memory);
+      solver_memory = Long.parseLong(z3memory);
 
       String rvtimeout = cmd.getOptionValue(opt_timeout, default_timeout);
-      timeout = Long.valueOf(rvtimeout);
+      timeout = Long.parseLong(rvtimeout);
       
       constraint_outdir = cmd.getOptionValue(opt_constraint_outdir, default_constraint_outdir);
 
@@ -190,10 +166,9 @@ public class Configuration {
 //      binaryImage = cmd.getOptionValue(opt_image);
       traceDir = cmd.getOptionValue(opt_tdir);
 
-      if (cmd.getArgList().size() > 0)
+      if (!cmd.getArgList().isEmpty())
         appname = (String) cmd.getArgList().get(0);
     } catch (Exception e) {
-      e.printStackTrace();
       System.exit(0);
     }
 
