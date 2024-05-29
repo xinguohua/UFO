@@ -2,8 +2,6 @@ package aser.ufo;
 
 import aser.ufo.misc.Pair;
 import aser.ufo.misc.RawReorder;
-import aser.ufo.misc.RawUaFCpx;
-import aser.ufo.misc.RawUaf;
 import aser.ufo.trace.AllocaPair;
 import aser.ufo.trace.Indexer;
 import aser.ufo.trace.TLEventSeq;
@@ -153,7 +151,6 @@ public class Session2 extends Session {
 
 
 
-private HashSet<Pair<Long, Long>> knownUAF = new HashSet<Pair<Long, Long>>(250);
 
   public HashMap<Integer, Integer> ct_uaf = new HashMap<Integer, Integer>();
   public IntArrayList ct_vals = new IntArrayList(1000);
@@ -256,70 +253,6 @@ public void printTraceStats() {
     System.out.println("Total Write Events: " + towrites);
     System.out.println("Total Events: " + TLEventSeq.stat.c_total);
 }
-
-  @Override
-  public void outputUafLs(List<RawUaf> uafLs, Indexer indexer) {
-    LOG.info("Use-After-Free bugs: {}", uafLs.size());
-    for (RawUaf uaf : uafLs) {
-      long dePC;
-      if (uaf instanceof RawUaFCpx) {
-        RawUaFCpx cu = (RawUaFCpx) uaf;
-        dePC = cu.pairs.hashCode();
-      } else {
-         dePC = uaf.deallocNode.pc;
-      }
-      Pair<Long, Long> pair = new Pair<Long, Long>(dePC, uaf.accNode.pc);
-      if (knownUAF.contains(pair)) {
-        //System.out.println("Skip known access violation  ");
-        continue;
-      }
-      knownUAF.add(pair);
-      uafID++;
-
-      writerD.append("#" + uafID + "  UAF").append("\r\n");
-      if (uaf instanceof RawUaFCpx) {
-        writerD.append("\r\n\r\n!!!!!!!!! Real UaF   " + ((RawUaFCpx)uaf).pairs.size() + "\r\n");
-        System.out.println("\r\n\r\n!!!!!!!!! Real UaF   " + ((RawUaFCpx)uaf).pairs.size() + "\r\n");
-      }
-
-      
-      writerD.append("\r\n------- #"+uaf.accNode.tid+" use call stack  \r\n");
-      writeCallStack(indexer, uaf.accNode);
-
-      int sz = 1;
-      if (uaf instanceof RawUaFCpx) {
-        RawUaFCpx cu = (RawUaFCpx) uaf;
-        sz = cu.pairs.size();
-        for (AllocaPair ap : cu.pairs) {
-          if (ap.deallocNode != null) {
-          writerD.append("\r\n------- #"+uaf.deallocNode.tid+" free call stack  \r\n");
-          writeCallStack(indexer, ap.deallocNode);
-          }
-        }
-      } else {
-        writerD.append("\r\n------- #"+uaf.deallocNode.tid+" free call stack  \r\n");
-        writeCallStack(indexer, uaf.deallocNode);
-      }
-
-      if (ct_uaf.containsKey(sz)) {
-        ct_uaf.put(sz, ct_uaf.get(sz) + 1);
-      } else ct_uaf.put(sz, 1);
-    }
-  }
-
-  protected void _stat(HashMap<MemAccNode, HashSet<AllocaPair>> candidateUafLs) {
-    HashMap<Integer, Integer> ct = new HashMap<Integer, Integer>();
-    int cm = 0;
-    for (HashSet<AllocaPair> p : candidateUafLs.values()) {
-      int sz = p.size();
-      if (sz > 1)
-        cm++;
-      if (ct.containsKey(sz))
-        ct.put(sz, ct.get(sz) + 1);
-      else ct.put(sz, 1);
-    }
-    System.out.println(((float)cm / candidateUafLs.size()) + "    " + ct);
-  }
 
 
 

@@ -1,14 +1,9 @@
 package aser.ufo.trace;
 
 import aser.ufo.NewReachEngine;
-import aser.ufo.SimpleReachEngine;
 import aser.ufo.UFO;
 import aser.ufo.misc.Pair;
-import aser.ufo.misc.RawUaf;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.*;
-import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.shorts.ShortOpenHashSet;
 import org.slf4j.Logger;

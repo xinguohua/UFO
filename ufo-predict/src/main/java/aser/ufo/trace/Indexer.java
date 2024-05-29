@@ -3,13 +3,8 @@
 package aser.ufo.trace;
 
 import aser.ufo.NewReachEngine;
-import aser.ufo.SimpleReachEngine;
 import aser.ufo.UFO;
-import aser.ufo.VectorClock;
 import aser.ufo.misc.Pair;
-import aser.ufo.misc.RawUaf;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.shorts.*;
 import org.slf4j.Logger;
@@ -655,26 +650,6 @@ public class Indexer {
       shared.allNodeSeq = null;
       state_ = PRE_NORM;
       System.gc();
-    }
-
-    // second phase normalize is in
-    public ArrayList<AbstractNode> normalize1st(RawUaf uaf) {
-      if (state_ < PRE_NORM)
-        throw new IllegalStateException();
-      LongArrayList schedule = uaf.schedule;
-      ArrayList<AbstractNode> uafNodes = new ArrayList<AbstractNode>(schedule.size());
-      for (long gid : schedule) {
-        AbstractNode an = gid2node.get(gid);
-        if (an == null)
-          throw new NoSuchElementException("could not found trace with gid " + gid);
-//      if (an instanceof ISyncNode
-//          || an instanceof DeallocNode
-//          || an instanceof AllocNode
-//          || an == uaf.accNode) {
-        uafNodes.add(an);
-//      }
-      }
-      return uafNodes;
     }
 
     /**
