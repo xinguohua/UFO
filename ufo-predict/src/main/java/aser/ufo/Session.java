@@ -90,14 +90,16 @@ public class Session {
     }
 
     public void start() {
-        traceLoader.loadTraceEvent();
+        traceLoader.loadSycnTraceEvent();
         traceLoader.preprocessSycn();
         printTraceStats();
-
         while (traceLoader.hasNext()) {
             Indexer indexer = new Indexer();
-            traceLoader.populateIndexer(indexer);
+            traceLoader.updateIndexerWithAliveThreads(indexer);
 
+            //1. set the number of threads
+            //2. assign index to each thread
+            indexer.postProcess();
             loadedEventCount += indexer.metaInfo.rawNodeCount;
 
 
@@ -149,7 +151,6 @@ public class Session {
                 solver.setCurrentIndexer(indexer);
 
                 ct_candidataUaF.add(candidateUafLs.size());
-
 
 
 //      Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>> iter = candidateUafLs.entrySet().iterator();
@@ -218,7 +219,6 @@ public class Session {
 
         return (int) (c / ct_constr.size());
     }
-
 
 
     public void printTraceStats() {

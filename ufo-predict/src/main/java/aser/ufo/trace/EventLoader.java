@@ -53,10 +53,8 @@ public class EventLoader {
                 return f.isFile();
             }
         });
-        if (traces == null)
-            throw new RuntimeException("Could not find folder " + folderName);
-        if (traces.length == 0)
-            throw new IllegalArgumentException("No trace file found at " + folderName);
+        if (traces == null) throw new RuntimeException("Could not find folder " + folderName);
+        if (traces.length == 0) throw new IllegalArgumentException("No trace file found at " + folderName);
 //    int flimt = 2;
 
 
@@ -77,8 +75,7 @@ public class EventLoader {
         }
         totalNumOfThreads = allThreads.size();
 
-        if (moduleList.size() < 1)
-            LOG.error("Empty module info " + moduleList);
+        if (moduleList.size() < 1) LOG.error("Empty module info " + moduleList);
 
 
         short mainTid = fileInfoMap.firstShortKey();
@@ -91,8 +88,7 @@ public class EventLoader {
     public int validCount() {
         int enabled = 0;
         for (FileInfo fi : fileInfoMap.values()) {
-            if (fi.enabled)
-                enabled++;
+            if (fi.enabled) enabled++;
         }
         return enabled;
     }
@@ -190,26 +186,17 @@ public class EventLoader {
         ShortOpenHashSet newTids = new ShortOpenHashSet(3);
         for (short tid : tids) {
             FileInfo fi = fileInfoMap.get(tid);
-            if (fi == null || !fi.enabled)
-                continue;
-//      TLEventSeq seq = new LoadingTask(fi, limit, gidGen).load();
+            if (fi == null || !fi.enabled) continue;
             LoadingTask2 loader = fi.getEventLoader(limit);
 
             TLEventSeq seq = loader.load();
             TLHeader h = seq.header;
-            if (h != null) {
-//        LOG.debug(">>> Loading:{}  version:{}  time:{}",
-//            h.tid, h.version, h.timeStart);
-            }
-            //LOG.debug(seq.stat.toString());
-            if (seq.events != null && seq.events.size() > 0) {
+            if (seq.events != null && !seq.events.isEmpty()) {
                 mIdx.addTidSeq(seq.tid, seq.events);
-                //LOG.debug("{} events loaded from thread {}", seq.events.size(), seq.tid);
             } else {
                 fileInfoMap.remove(seq.tid);
             }
-            if (seq.newTids.size() < 1)
-                continue;
+            if (seq.newTids.isEmpty()) continue;
 
             for (short ntid : seq.newTids) {
                 FileInfo nfi = fileInfoMap.get(ntid);
@@ -224,64 +211,36 @@ public class EventLoader {
         return newTids;
     }
 
-    public void populateIndexer(Indexer mIdx) {
-        int tidCount = 0;
-        final int ptLimit = windowSize;// / (aliveTids.size() * 6 + fileInfoMap.size() * 4 ) * 10;
-//    System.out.println(aliveTids.size() + "   " + fileInfoMap.size());
+    public void updateIndexerWithAliveThreads(Indexer mIdx) {
+        int tidCount = aliveTids.size();
+        ShortOpenHashSet currentTids = new ShortOpenHashSet(aliveTids);
+        final int ptLimit = windowSize;
 
-        // load all known threads,
-        // if a thread is dead (not alive but still in the aliveTids), its file offset will be the cEnd and thus it won't be loaded
-        //LOG.debug(">>>>>>>>>>> alive:{},  ptLimit {}", aliveTids.size(),  ptLimit);
-        ShortOpenHashSet newTids = addTLSeq(ptLimit, mIdx, aliveTids);
-        tidCount += aliveTids.size();
+        while (!currentTids.isEmpty()) {
+            ShortOpenHashSet nextTids = addTLSeq(ptLimit, mIdx, currentTids);
+            tidCount += nextTids.size();
+            updateAliveTids(nextTids);
+            currentTids = nextTids;
+        }
 
+        removeEOFTraceFiles();
+        mIdx.metaInfo.tidCount = tidCount;
+    }
+
+    private void updateAliveTids(ShortOpenHashSet newTids) {
         newTids.removeAll(aliveTids);
         aliveTids.addAll(newTids);
+    }
 
-        // if found new, load
-        while (newTids.size() > 0) {
-            //LOG.debug(">>>>>>>>>>> trace limit {}, alive{}", windowSize, aliveTids.size());
-            ShortOpenHashSet nextTids = addTLSeq(ptLimit, mIdx, newTids);
-            tidCount += newTids.size();
-
-            nextTids.removeAll(aliveTids);
-            aliveTids.addAll(nextTids);
-            newTids = nextTids;
-        } // while
-
-//    // disable finished trace file
-//    for (FileInfo fi : fileInfoMap.values()) {
-//      if (fi.fileOffset >= fi.fsize - 7) {
-//        fi.enabled = false;
-//      }
-//    }
-
-        // remove EOF trace file
+    private void removeEOFTraceFiles() {
         Iterator<Map.Entry<Short, FileInfo>> iter = fileInfoMap.entrySet().iterator();
         while (iter.hasNext()) {
             Map.Entry<Short, FileInfo> e = iter.next();
             FileInfo info = e.getValue();
             if (info.fileOffset >= info.fsize - 5) {
                 iter.remove();
-                //aliveTids.remove(info.tid);//JEFF
             }
         }
-
-        mIdx.metaInfo.tidCount = tidCount;
-        //JEFF
-        //1. set the number of threads
-        //2. assign index to each thread
-
-
-//    if (tidCount < 2) {
-//      mIdx.metaInfo.sharedAddrs = EMPTY_LSET;
-//    }
-//    else
-        mIdx.postProcess();
-//    if (mIdx.metaInfo.tidRawNodesCounts.size() != tidCount)
-//      throw new RuntimeException(mIdx.metaInfo.tidRawNodesCounts.size() + "    " + tidCount);
-
-        //LOG.debug("Total events in indexer ({} threads): {}", tidCount, mIdx.getAllNodeSeq().size());
     }
 
     public int getWindowSize() {
@@ -298,7 +257,7 @@ public class EventLoader {
     }
 
 
-    public void loadTraceEvent() {
+    public void loadSycnTraceEvent() {
         for (short tid : allThreads) {
             FileInfo fi = fileInfoMap.get(tid);
             if (fi != null) {

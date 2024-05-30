@@ -136,8 +136,6 @@ public class Indexer {
     private NewReachEngine reachEngine = new NewReachEngine();
 
     public void postProcess() {
-      if (state_ >= IDX_BUILT)
-        throw new IllegalStateException("indexes already built");
       // 1. first pass handles:
       // sync,
       // alloc & dealloc,
