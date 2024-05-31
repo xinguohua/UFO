@@ -115,19 +115,51 @@ public class Session {
 
 
     public static void displayRawReorders(List<RawReorder> rawReorders, Indexer indexer, EventLoader traceLoader) {
-        for (RawReorder rawReorder : rawReorders) {
-            System.out.println("RawReorder:");
-            System.out.println("  Switch Pair: " + rawReorder.switchPair);
-            System.out.println("  Depend Pair: " + rawReorder.dependPair);
-            System.out.println("  Schedule:");
-            for (String s : rawReorder.schedule) {
-                String[] parts = s.split("-");
-                short tid = Short.parseShort(parts[1]);
-                System.out.println(traceLoader.threadColorMap.get(tid) + "    " + s + "    " + indexer.getAllNodeMap().get(s));
+        PrintWriter writer = null;
+        try {
+            writer = new PrintWriter(new FileWriter("output.txt"));
+
+            for (RawReorder rawReorder : rawReorders) {
+                String header = "RawReorder:";
+                System.out.println(header);
+                writer.println(header);
+
+                String switchPair = "  Switch Pair: " + rawReorder.switchPair;
+                System.out.println(switchPair);
+                writer.println(switchPair);
+
+                String dependPair = "  Depend Pair: " + rawReorder.dependPair;
+                System.out.println(dependPair);
+                writer.println(dependPair);
+
+                String scheduleHeader = "  Schedule:";
+                System.out.println(scheduleHeader);
+                writer.println(scheduleHeader);
+
+                for (String s : rawReorder.schedule) {
+                    String[] parts = s.split("-");
+                    short tid = Short.parseShort(parts[1]);
+                    String color = traceLoader.threadColorMap.get(tid);
+                    AbstractNode node = indexer.getAllNodeMap().get(s);
+
+                    String nodeString = node != null ? node.toString() : "[Node not found]";
+                    String line = color + "    " + s + "    " + nodeString + "\u001B[0m";
+
+                    System.out.println(line);  // Print colored line to console
+                    writer.println(line);       // Write colored line to file
+                }
+                System.out.println();
+                writer.println();
             }
-            System.out.println();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (writer != null) {
+                writer.close();
+            }
         }
     }
+
 
 
     public void printTraceStats() {
