@@ -33,7 +33,6 @@ public class Session {
     public final Configuration config;
     public final EventLoader traceLoader;
     public final SimpleSolver solver;
-    //  public final UfoSolver solver2;
     public Addr2line addr2line;
     public final ExecutorService exe;
     protected int windowSize;
@@ -48,9 +47,6 @@ public class Session {
         solver = new SimpleSolver(config);
     }
 
-    int __c1 = 0;
-    int __c2 = 0;
-    int __c3 = 0;
 
     int loadedEventCount = 0;
 
@@ -99,125 +95,38 @@ public class Session {
 
             //1. set the number of threads
             //2. assign index to each thread
-            indexer.postProcess();
+            indexer.processNode();
             loadedEventCount += indexer.metaInfo.rawNodeCount;
 
 
-            //ADD THREAD FORK-JOIN ORDER TO PRUNE AWAY OBVIOUS CASES
+            Map<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>> reorderPairMap = indexer.getReorderPairMap();
+            if (reorderPairMap == null || reorderPairMap.isEmpty()) return;
 
-            HashMap<MemAccNode, HashSet<AllocaPair>> candidateUafLs = indexer.getMachtedAcc();
+            prepareConstraints(indexer);
 
-//      if(candidateUafLs.isEmpty())continue;
-
-            if (config.fast_detect) {
-                LOG.info("candidateUafLs: {}", candidateUafLs.size());
-                Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>> iter1 = candidateUafLs.entrySet().iterator();
-                while (iter1.hasNext()) {
-
-                    Map.Entry<MemAccNode, HashSet<AllocaPair>> e = iter1.next();
-                    final MemAccNode acc = e.getKey();
-                    final HashSet<AllocaPair> pairs = e.getValue();
-
-                    writerD.append("\r\n------- #" + acc.tid + " use call stack  \r\n");
-                    writeCallStack(indexer, acc);
-
-                    for (AllocaPair pair : pairs) {
-                        DeallocNode free = pair.deallocNode;
-                        writerD.append("\r\n------- #" + free.tid + " free call stack  \r\n");
-                        writeCallStack(indexer, free);
-                    }
-                }
+            solver.setCurrentIndexer(indexer);
 
 
-                __c3 += candidateUafLs.size();
-                //      5485
+            List<RawReorder> rawReorders = solveReorderConstr(indexer.getTSTid2sqeNodes(), indexer.getReorderPairMap().entrySet().iterator(), UFO.PAR_LEVEL);
 
-                //     System.out.println("candidateUafLs.size()  " + candidateUafLs.size() + "    " + __c3);
+            displayRawReorders(rawReorders, indexer);
 
-                //      if (System.currentTimeMillis() > 1) {
-                //        System.out.println(" continue;");
-                //        continue;
-                //      }
-
-                __c1 += indexer.metaInfo.sharedAddrs.size();
-                for (HashSet<AllocaPair> sp : candidateUafLs.values()) {
-                    if (sp.size() > 1) __c2++;
-                }
-
-
-            } else {
-                prepareConstraints(indexer);
-
-                solver.setCurrentIndexer(indexer);
-
-                ct_candidataUaF.add(candidateUafLs.size());
-
-
-//      Iterator<Map.Entry<MemAccNode, HashSet<AllocaPair>>> iter = candidateUafLs.entrySet().iterator();
-//      while (iter.hasNext()) {
-//        List<RawUaf> ls = solveUafConstr(iter, UFO.PAR_LEVEL);
-//        if (ls != null && ls.size() > 0)
-//          outputUafLs(ls, indexer);
-//      }
-
-                List<RawReorder> ls = solveReorderConstr(indexer.getTSTid2sqeNodes(), indexer.getReorderPairMap().entrySet().iterator(), UFO.PAR_LEVEL);
-                if (ls != null && ls.size() > 0)
-//          outputUafLs(ls, indexer);
-
-
-                    if (solver.ct_constr.size() > 0) {
-                        ct_vals.push(solver.ct_vals);
-                        Pair<Integer, Long> max_total = _Max_total(solver.ct_constr);
-                        ct_constr.push(max_total.value.intValue());
-                        if (max_total.value > Integer.MAX_VALUE)
-                            throw new RuntimeException("Overflow long -> int " + max_total.value);
-                        ct_max_constr.push(max_total.key);
-//        int avg = _Max_total.value / solver.ct_constr.size();
-//        ct_constr_max_avg.add(new Pair<Integer, Integer>(_Max_total.key, avg));
-                    }
-                solver.reset(); // release constraints for this round
-                writerD.append("\r\n");
-            } // while
-
-
-        }
-
-        exe.shutdown();
-        try {
-            writerD.close();
-            exe.awaitTermination(10, TimeUnit.SECONDS);
-        } catch (Exception e) {
-            LOG.error(" error finishing ", e);
         }
         exe.shutdownNow();
     }
 
 
-    public HashMap<Integer, Integer> ct_uaf = new HashMap<Integer, Integer>();
-    public IntArrayList ct_vals = new IntArrayList(1000);
-    public IntArrayList ct_constr = new IntArrayList(1000);
-    public IntArrayList ct_max_constr = new IntArrayList(1000);
-    public IntArrayList ct_candidataUaF = new IntArrayList(1000);
-//  public ArrayList<Pair<Integer, Integer>> ct_constr_max_avg = new ArrayList<Pair<Integer, Integer>>(100);
-
-
-    public static Pair<Integer, Long> _Max_total(IntArrayList ct_constr) {
-        long c = 0;
-        int max = 0;
-        for (int i : ct_constr) {
-            c += i;
-            if (i > max) max = i;
+    public static void displayRawReorders(List<RawReorder> rawReorders, Indexer indexer) {
+        for (RawReorder rawReorder : rawReorders) {
+            System.out.println("RawReorder:");
+            System.out.println("  Switch Pair: " + rawReorder.switchPair);
+            System.out.println("  Depend Pair: " + rawReorder.dependPair);
+            System.out.println("  Schedule:");
+            for (String s : rawReorder.schedule) {
+                System.out.println("    " + s + "    " + indexer.getAllNodeMap().get(s));
+            }
+            System.out.println();
         }
-        return new Pair<Integer, Long>(max, c);
-    }
-
-    public static int _Avg(IntArrayList ct_constr) {
-        if (ct_constr == null || ct_constr.size() == 0) return -1;
-        long c = 0;
-        for (int i : ct_constr)
-            c += i;
-
-        return (int) (c / ct_constr.size());
     }
 
 
@@ -297,7 +206,7 @@ public class Session {
         long thisPC = Addr2line.getPC(node);
 
         LongArrayList callStack = indexer.buildCallStack(node);
-        if (callStack == null || callStack.size() < 1) {
+        if (callStack == null || callStack.isEmpty()) {
             //JEFF
             //if we did not record func entry and exit
             AddrInfo ai = addr2line.getAddrInfoFromPC(thisPC);
@@ -320,7 +229,7 @@ public class Session {
             AddrInfo ai = srcInfo.get(pc);
             if (ai == null) continue;
             while (i++ != pad) writerD.append("  ");
-            writerD.append(ai.toString()).append(" pc: 0x" + Long.toHexString(ai.addr)).append('\n');//JEFF
+            writerD.append(ai.toString()).append(" pc: 0x").append(Long.toHexString(ai.addr)).append('\n');//JEFF
             pad++;
         }
     }

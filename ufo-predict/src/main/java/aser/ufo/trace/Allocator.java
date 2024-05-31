@@ -66,18 +66,7 @@ public class Allocator {
     AllocaPair g = new AllocaPair(allocNode);
     q.add(g);
   }
-//private HashSet<DeallocNode> __df_nodes = new HashSet<DeallocNode>();
-private void addNewAllocaPairWithFakeAlloc(short tid, DeallocNode deallocNode)
-{
-	TLAllocQ q = tid2AllocQ.get(tid);
-    if (q == null) {
-      q = new TLAllocQ();
-      tid2AllocQ.put(tid, q);
-    }
-    AllocaPair g = new AllocaPair(AllocNode.FAKE);
-    g.deallocNode = deallocNode;
-    q.add(g);
-}
+
   public void insert(DeallocNode deallocNode) {
     count_dealloc++;
     short tid = deallocNode.tid;
@@ -105,110 +94,6 @@ private void addNewAllocaPairWithFakeAlloc(short tid, DeallocNode deallocNode)
     unmatched.add(deallocNode);
   }
 
-  public void matchInterThrDealloc(NewReachEngine reachEngine) {
-	  
-	  if(unmatched.size()>0)
-	  {//JEFF
-		  //if we get here, INTERESTING things begin
-	  
-    if (count_alloc != count_dealloc) {
-      //LOG.error("Alloc({}) != Dealloc({})", count_alloc, count_dealloc);
-    }
-//    System.err.printf("Alloc(%d) != Dealloc(%d)\r\n", count_alloc, count_dealloc);
-//    System.out.println(">>> matchInterThrDealloc before unmatched " + unmatched.size() + "    matched: " + _matchedAlloc());
-    HashSet<AllocaPair> possibleMatchSet = new HashSet<AllocaPair>(100);
-    HashSet<DeallocNode> matchedDelloc = new HashSet<DeallocNode>(60);
-
-
-    for (DeallocNode deNode : unmatched) {
-      final long addr = deNode.addr;
-      final short tid = deNode.tid;
-      findMatchPairs(possibleMatchSet, addr, tid);
-
-      if (possibleMatchSet.size() == 1) {
-        AllocaPair g = possibleMatchSet.iterator().next();
-        deNode.length = g.allocNode.length;
-        g.deallocNode = deNode;
-        // WARNING: if alloc is from previous window, this can be wrong!
-        matchedDelloc.add(deNode);
-      } else if (possibleMatchSet.isEmpty()){
-        //LOG.debug("No match for dealloc {} , possible alloc", deNode);
-    	  
-    	  //JEFF: create a fake alloc node pair
-    	  addNewAllocaPairWithFakeAlloc(tid,deNode);
-
-      } else { // too many match
-        boolean matched = false;
-        __OUT:
-        for (AllocaPair p1 : possibleMatchSet)
-          for (AllocaPair p2 : possibleMatchSet) {
-            AllocNode a1 = p1.allocNode;
-            AllocNode a2 = p2.allocNode;
-            if (a1.gid == a2.gid)
-              continue;
-            if (tryMatchPairs(p1, p2, deNode, reachEngine)) {
-              matched = true;
-              matchedDelloc.add(deNode);
-              break __OUT;
-            }
-
-          }
-
-        if (!matched) {
-          for (AllocaPair g : possibleMatchSet) {
-            if (g.possibleDealloc == null) {
-              g.possibleDealloc = new HashSet<DeallocNode>(30);
-            }
-            g.possibleDealloc.add(deNode);
-          }
-          LOG.warn("Multi concurrent alloc for one free. alloc:{}    free:{}", possibleMatchSet, deNode);
-        }
-      }
-    } // while for each unmatched dealloc
-
-    unmatched.retainAll(matchedDelloc);
-    if (unmatched.size() > 0) {
-      //LOG.info("unmatched dealloc {}", unmatched.size());
-    }
-
-//    System.out.println(">>> matchInterThrDealloc after unmatched " + unmatched.size() + "    matched: " + _matchedAlloc());
-	  }
-  }
-
-  protected void findMatchPairs(HashSet<AllocaPair> possibleMatchSet, long addr, short tid) {
-    possibleMatchSet.clear();
-    for (Short2ObjectMap.Entry<TLAllocQ> e : tid2AllocQ.short2ObjectEntrySet()) {
-      if (e.getShortKey() == tid)
-        continue;
-
-      TLAllocQ q = e.getValue();
-      ArrayList<AllocaPair> ls = q.tree.get(addr);
-      if (ls == null || ls.isEmpty())
-        continue;
-      for (AllocaPair a : ls) {
-        AllocNode aNode = a.allocNode;
-        if (aNode.addr == addr && a.deallocNode == null) {
-            possibleMatchSet.add(a);
-        }
-      } // for each same addr acc group in tid
-
-    } // for tl q
-  }
-
-  private boolean tryMatchPairs(AllocaPair p1, AllocaPair p2, DeallocNode deNode, NewReachEngine reachEngine) {
-    AllocNode a1 = p1.allocNode;
-    AllocNode a2 = p2.allocNode;
-    if (reachEngine.canReach(a1, a2) && reachEngine.canReach(deNode, a2)) {
-      deNode.length = p1.allocNode.length;
-      p1.deallocNode = deNode;
-      return true;
-    } else if (reachEngine.canReach(a2, a1) && reachEngine.canReach(deNode, a1)) {
-      deNode.length = p2.allocNode.length;
-      p2.deallocNode = deNode;
-      return true;
-    }
-    return false;
-  }
 
   public boolean checkAcc(MemAccNode accNode, NewReachEngine reachEngine) {
 

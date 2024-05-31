@@ -255,7 +255,7 @@ public static final int TRIM_LEN = 50;
     Long2ObjectOpenHashMap<AddrInfo> srcInfo = sourceInfo(pcLs);
 
     try { // zip and append
-      if (srcInfo.size() == 0) {
+      if (srcInfo.isEmpty()) {
         out.append("Could not find source code line info\r\n");
         for (AbstractNode n : nodes) {
           out.append(toString(n)).append('\n');

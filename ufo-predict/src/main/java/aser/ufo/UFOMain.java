@@ -40,17 +40,17 @@ public class UFOMain {
     LOG.info("app_name {}; trace_dir {}.", config.appname, config.traceDir);
 
     String val = properties.getProperty("solver_time");
-    if (val != null && val.length() > 0) {
+    if (val != null && !val.isEmpty()) {
       config.solver_timeout = Long.parseLong(val);
       LOG.info("solver_timeout {}", config.solver_timeout);
     }
     val = properties.getProperty("solver_mem");
-    if (val != null && val.length() > 0) {
+    if (val != null && !val.isEmpty()) {
       config.solver_memory = Long.parseLong(val);
       LOG.info("solver_mem {}", config.solver_memory);
     }
     val = properties.getProperty("window_size");
-    if (val != null && val.length() > 0) {
+    if (val != null && !val.isEmpty()) {
       config.window_size = Long.parseLong(val);
       LOG.info("window_size {}", config.window_size);
     }

@@ -7,9 +7,9 @@ import trace.MemAccNode;
 import java.util.ArrayList;
 
 public class RawReorder {
-  final Pair<MemAccNode, MemAccNode> switchPair;
+  public final Pair<MemAccNode, MemAccNode> switchPair;
 
-  final Pair<MemAccNode, MemAccNode> dependPair;
+  public final Pair<MemAccNode, MemAccNode> dependPair;
 
   public final ArrayList<String> schedule;
 

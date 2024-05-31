@@ -13,6 +13,8 @@ import trace.*;
 
 import java.util.*;
 
+import static aser.ufo.SimpleSolver.makeVariable;
+
 
 /**
  * tid -> integer
@@ -44,6 +46,9 @@ public class Indexer {
 
         // z3 declare var, all shared acc and other nodes
         protected ArrayList<AbstractNode> allNodeSeq = new ArrayList<AbstractNode>(UFO.INITSZ_L);
+
+        protected Map<String, AbstractNode> allNodeMap = new HashMap<String, AbstractNode>();
+
 
         protected HashMap<MemAccNode, DeallocNode> acc2Dealloc = new HashMap<MemAccNode, DeallocNode>(UFO.INITSZ_L);
 
@@ -95,7 +100,7 @@ public class Indexer {
         }
     }
 
-    protected SharedAccIndexes shared = new SharedAccIndexes();
+    public SharedAccIndexes shared = new SharedAccIndexes();
 
 
     public Indexer() {
@@ -115,26 +120,26 @@ public class Indexer {
 
     private NewReachEngine reachEngine = new NewReachEngine();
 
-    public void postProcess() {
+    public void processNode() {
         // 1. first pass handles:
         // sync,
         // alloc & dealloc,
         // call seq
         // tid first node, last node
-        pass1st();
-
-        // check reachability engine
-
-        allocator.matchInterThrDealloc(reachEngine);
-
-        //System.out.println("postProcess");
+        handleSpeNode();
 
         // 2. second pass:
         LongOpenHashSet sharedAddrSet = findSharedAcc();
 
+        // 3. third pass, handle shared mem acc (index: addr tid dealloc allnode)
+        processReorderNodes(sharedAddrSet);
+    }
+
+
+    public void processReorderNodes(LongOpenHashSet sharedAddrSet) {
         Pair<MemAccNode, MemAccNode> switchPair = new Pair<MemAccNode, MemAccNode>();
         Pair<MemAccNode, MemAccNode> dependentPair = new Pair<MemAccNode, MemAccNode>();
-        // 3. third pass, handle shared mem acc (index: addr tid dealloc allnode)
+
         for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
             short tid = e.getShortKey();
             ArrayList<AbstractNode> tidNodes = shared.tid2sqeNodes.get(tid);
@@ -153,7 +158,6 @@ public class Indexer {
                         tidNodes.add(memNode);
                         handleTSMemAcc(tid, memNode);
 
-
                         if (memNode.order == 500) {
                             switchPair.key = memNode;
                         }
@@ -167,30 +171,20 @@ public class Indexer {
                             dependentPair.value = memNode;
                         }
                     }
-
-                } else if (!(node instanceof FuncEntryNode)
-                        && !(node instanceof FuncExitNode)) {
-                    // other types, except func in/out
+                    shared.allNodeMap.put(makeVariable(memNode), memNode);
+                } else if (!(node instanceof FuncEntryNode) && !(node instanceof FuncExitNode)) {
+                    // 其他类型，除了函数入口/出口节点
                     shared.allNodeSeq.add(node);
                     tidNodes.add(node);
+                    shared.allNodeMap.put(makeVariable(node), node);
                 }
-            } // for each node in thread
-        } // for each thread
+            } // 遍历每个线程中的节点
+        } // 遍历每个线程
 
         reorderPairMap.put(switchPair, dependentPair);
-
         metaInfo.sharedAddrs = sharedAddrSet;
         metaInfo.countAllNodes = getAllNodeSeq().size();
-
-        if (!LOG.isTraceEnabled()) {
-//      _allocationTree = null;
-//      _rawTid2seq = null;
-//      trim();
-        } else {
-            LOG.debug(metaInfo.toString());
-        }
     }
-
 
     private Allocator allocator = new Allocator();
 
@@ -200,9 +194,8 @@ public class Indexer {
      * call seq
      * tid first node, last node
      */
-    protected void pass1st() {
-
-        for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
+    protected void handleSpeNode() {
+    for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
             final short curTid = e.getShortKey();
             ArrayList<AbstractNode> nodes = e.getValue();
 
@@ -216,8 +209,6 @@ public class Indexer {
                     // matching delloc with alloc, replacing alloc with dealloc
                     metaInfo.countDealloc++;
                     DeallocNode dnode = (DeallocNode) node;
-
-
                     allocator.insert(dnode);
                 } else if (node instanceof FuncExitNode || node instanceof FuncEntryNode) {
                     ArrayList<AbstractNode> callseq = tid2CallSeq.get(curTid);
@@ -255,14 +246,12 @@ public class Indexer {
         for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
             final short tid = e.getShortKey();
             for (AbstractNode node : e.getValue()) {
-                if (!(node instanceof MemAccNode))
-                    continue;
+                if (!(node instanceof MemAccNode)) continue;
                 // save shared memory access
                 MemAccNode memNode = (MemAccNode) node;
                 final long addr = memNode.getAddr();
 
-                if (allocator.checkAcc(memNode, reachEngine))
-                    sharedAddrSet.add(addr);
+                if (allocator.checkAcc(memNode, reachEngine)) sharedAddrSet.add(addr);
                 //==============================================================================================================
                 if (node instanceof ReadNode || node instanceof RangeReadNode) {
                     ShortOpenHashSet tidSetR = addr2TidReads.get(addr);
@@ -381,12 +370,9 @@ public class Indexer {
                 _tid2SyncStack.put(tid, stack);
             }
             //assert(stack.fsize()>0); //this is possible when segmented
-            if (stack.isEmpty())
-                lockpairLs.add(new LockPair(null, node));
-            else if (stack.size() == 1)
-                lockpairLs.add(new LockPair(stack.pop(), node));
-            else
-                stack.pop();//handle reentrant nLock
+            if (stack.isEmpty()) lockpairLs.add(new LockPair(null, node));
+            else if (stack.size() == 1) lockpairLs.add(new LockPair(stack.pop(), node));
+            else stack.pop();//handle reentrant nLock
         } // nUnlock
 
     }
@@ -443,11 +429,9 @@ public class Indexer {
     }
 
 
-    Long2ObjectOpenHashMap<ArrayList<ISyncNode>> _syncNodesMap =
-            new Long2ObjectOpenHashMap<ArrayList<ISyncNode>>(UFO.INITSZ_S);
+    Long2ObjectOpenHashMap<ArrayList<ISyncNode>> _syncNodesMap = new Long2ObjectOpenHashMap<ArrayList<ISyncNode>>(UFO.INITSZ_S);
 
-    Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>> _tid2LockPairs
-            = new Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>>(UFO.INITSZ_S / 2);
+    Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>> _tid2LockPairs = new Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>>(UFO.INITSZ_S / 2);
 
     Short2ObjectOpenHashMap<Stack<ISyncNode>> _tid2SyncStack = new Short2ObjectOpenHashMap<Stack<ISyncNode>>(UFO.INITSZ_S / 2);
 
@@ -468,19 +452,16 @@ public class Indexer {
         final short tid = node.tid;
         final long gid = node.gid;
         ArrayList<AbstractNode> callseq = tid2CallSeq.get(tid);
-        if (callseq == null || callseq.size() < 1)
-            return null;
+        if (callseq == null || callseq.size() < 1) return null;
         LongArrayList callStack = new LongArrayList(100);
         for (AbstractNode n : callseq) {
-            if (n.gid > gid)
-                break;
+            if (n.gid > gid) break;
             if (n instanceof FuncEntryNode) {
                 long pc = ((FuncEntryNode) n).pc;
                 callStack.push(pc);
 
             } else if (n instanceof FuncExitNode) {
-                if (!callStack.isEmpty())
-                    callStack.popLong();
+                if (!callStack.isEmpty()) callStack.popLong();
 
             } else throw new IllegalStateException("Unknown event in call seq " + n);
         }
@@ -515,8 +496,7 @@ public class Indexer {
             }
         }
 
-        if (tidNodes.get(id).gid < node.gid && id < max)
-            id++;//special case
+        if (tidNodes.get(id).gid < node.gid && id < max) id++;//special case
 
 
         for (int i = 0; i <= id; i++)
@@ -544,6 +524,11 @@ public class Indexer {
 
     public ArrayList<AbstractNode> getAllNodeSeq() {
         return shared.allNodeSeq;
+    }
+
+
+    public Map<String, AbstractNode> getAllNodeMap() {
+        return shared.allNodeMap;
     }
 
     public Long2ObjectOpenHashMap<ArrayList<ISyncNode>> get_syncNodesMap() {

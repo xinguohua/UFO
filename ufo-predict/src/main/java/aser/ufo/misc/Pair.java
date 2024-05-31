@@ -15,7 +15,7 @@ public class Pair<K, V> implements Serializable {
   }
 
   public String toString() {
-    return "Pair[" + this.key + "," + this.value + "]";
+    return "Pair[Node: " + this.key + ", Node: " + this.value + "]";
   }
 
   public int hashCode() {

@@ -655,7 +655,7 @@ public class SimpleSolver implements UfoSolver {
   protected static String makeVariable(long GID) {
     return "x" + GID;
   }
-  protected static String makeVariable(AbstractNode node) {
+  public static String makeVariable(AbstractNode node) {
     return "x" + node.gid + "-"+ node.tid;
   }
 
