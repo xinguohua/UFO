@@ -103,9 +103,6 @@ protected static String Z3_SMT2 = ".z3smt2";
    * @param msg
    */
   public ArrayList<String> buildSchedule(String msg) {
-
-//    System.out.println(">>>Z3Run buildSchedule:" + msg);
-
     PrintWriter smtWriter = null;
     try {
       smtWriter = Util.newWriter(smtFile, true);

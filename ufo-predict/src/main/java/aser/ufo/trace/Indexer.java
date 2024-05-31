@@ -135,27 +135,35 @@ public class Indexer {
         processReorderNodes(sharedAddrSet);
     }
 
-
     public void processReorderNodes(LongOpenHashSet sharedAddrSet) {
-        Pair<MemAccNode, MemAccNode> switchPair = new Pair<MemAccNode, MemAccNode>();
-        Pair<MemAccNode, MemAccNode> dependentPair = new Pair<MemAccNode, MemAccNode>();
+        Pair<MemAccNode, MemAccNode> switchPair = new Pair<>();
+        Pair<MemAccNode, MemAccNode> dependentPair = new Pair<>();
 
-        for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
-            short tid = e.getShortKey();
-            ArrayList<AbstractNode> tidNodes = shared.tid2sqeNodes.get(tid);
+        for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> entry : _rawTid2seq.short2ObjectEntrySet()) {
+            short tid = entry.getShortKey();
+            ArrayList<AbstractNode> tidNodes = shared.tid2sqeNodes.computeIfAbsent(tid, k -> new ArrayList<>(UFO.INITSZ_L));
 
-            for (AbstractNode node : e.getValue()) {
+            AbstractNode first = NewReachEngine.tidFirstNode.get(tid);
+            AbstractNode last = NewReachEngine.tidLastNode.get(tid);
+            addNodeToSharedAndTid(first, tidNodes);
+            addNodeToSharedAndTid(last, tidNodes);
 
-                if (tidNodes == null) {
-                    tidNodes = new ArrayList<AbstractNode>(UFO.INITSZ_L);
-                    shared.tid2sqeNodes.put(tid, tidNodes);
+            for (TStartNode tStartNode : NewReachEngine.thrStartNodeList) {
+                if (tStartNode.tid == tid){
+                    addNodeToSharedAndTid(tStartNode, tidNodes);
                 }
-
+            }
+            for (TJoinNode joinNode : NewReachEngine.joinNodeList) {
+                if (joinNode.tid == tid){
+                    addNodeToSharedAndTid(joinNode, tidNodes);
+                }
+            }
+            for (AbstractNode node : entry.getValue()) {
+                if (node == first || node == last) continue;
                 if (node instanceof MemAccNode) {
                     MemAccNode memNode = (MemAccNode) node;
                     if (sharedAddrSet.contains(memNode.getAddr())) {
-                        shared.allNodeSeq.add(node);
-                        tidNodes.add(memNode);
+                        addNodeToSharedAndTid(memNode, tidNodes);
                         handleTSMemAcc(tid, memNode);
 
                         if (memNode.order == 500) {
@@ -171,19 +179,23 @@ public class Indexer {
                             dependentPair.value = memNode;
                         }
                     }
-                    shared.allNodeMap.put(makeVariable(memNode), memNode);
                 } else if (!(node instanceof FuncEntryNode) && !(node instanceof FuncExitNode)) {
-                    // 其他类型，除了函数入口/出口节点
-                    shared.allNodeSeq.add(node);
-                    tidNodes.add(node);
-                    shared.allNodeMap.put(makeVariable(node), node);
+                    addNodeToSharedAndTid(node, tidNodes);
                 }
-            } // 遍历每个线程中的节点
-        } // 遍历每个线程
+            }
+        }
 
         reorderPairMap.put(switchPair, dependentPair);
         metaInfo.sharedAddrs = sharedAddrSet;
         metaInfo.countAllNodes = getAllNodeSeq().size();
+    }
+
+    private void addNodeToSharedAndTid(AbstractNode node, ArrayList<AbstractNode> tidNodes) {
+        if (node != null && !shared.allNodeMap.containsKey(makeVariable(node))) {
+            shared.allNodeSeq.add(node);
+            shared.allNodeMap.put(makeVariable(node), node);
+            tidNodes.add(node);
+        }
     }
 
     private Allocator allocator = new Allocator();

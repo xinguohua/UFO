@@ -44,6 +44,23 @@ public abstract class AbstractNode {
 
   public int gid;
   public final short tid;
+
+  public int getGid() {
+    return gid;
+  }
+
+  public void setGid(int gid) {
+    this.gid = gid;
+  }
+
+  public short getTid() {
+    return tid;
+  }
+
+  public long getOrder() {
+    return order;
+  }
+
   public final long order;
 
 
