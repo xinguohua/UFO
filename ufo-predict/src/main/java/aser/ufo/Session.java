@@ -145,6 +145,12 @@ public class Session {
                     String nodeString = node != null ? node.toString() : "[Node not found]";
                     String line = color + "    " + s + "    " + nodeString + "\u001B[0m";
 
+                    if (isPartOfPair(rawReorder.switchPair, node)) {
+                        line += " * Swap";
+                    } else if (isPartOfPair(rawReorder.dependPair, node)) {
+                        line += " * Depend";
+                    }
+
                     System.out.println(line);  // Print colored line to console
                     writer.println(line);       // Write colored line to file
                 }
@@ -160,6 +166,15 @@ public class Session {
         }
     }
 
+
+    private static boolean isPartOfPair(Pair<MemAccNode, MemAccNode> pair, AbstractNode node) {
+        // Check if node matches either part of the pair
+        return node != null && (nodeMatchesMemAccNode(node, pair.key) || nodeMatchesMemAccNode(node, pair.value));
+    }
+
+    private static boolean nodeMatchesMemAccNode(AbstractNode node, AbstractNode node1) {
+        return node.gid == node1.gid && node.tid == node1.tid;
+    }
 
 
     public void printTraceStats() {
