@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +21,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class EventLoader {
 
     private static final Logger LOG = LoggerFactory.getLogger(EventLoader.class);
+
+    private static final String[] COLORS = {
+            "\u001B[31m", // Red
+            "\u001B[32m", // Green
+            "\u001B[33m", // Yellow
+            "\u001B[34m", // Blue
+            "\u001B[35m", // Magenta
+            "\u001B[36m", // Cyan
+            "\u001B[37m"  // White
+    };
+
+    public Map<Short, String> threadColorMap = new HashMap<Short, String>();
+
 
     public final ExecutorService exe;
     public final String folderName;
@@ -71,6 +85,7 @@ public class EventLoader {
             long sz = f.length();
             FileInfo fi = new FileInfo(f, sz, tid);
             fileInfoMap.put(tid, fi);
+            threadColorMap.put(tid,  COLORS[tid% COLORS.length]);
             allThreads.add(tid);
         }
         totalNumOfThreads = allThreads.size();

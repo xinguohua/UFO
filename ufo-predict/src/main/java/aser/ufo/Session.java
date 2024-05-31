@@ -106,24 +106,24 @@ public class Session {
 
             solver.setCurrentIndexer(indexer);
 
-
             List<RawReorder> rawReorders = solveReorderConstr(indexer.getTSTid2sqeNodes(), indexer.getReorderPairMap().entrySet().iterator(), UFO.PAR_LEVEL);
 
-            displayRawReorders(rawReorders, indexer);
-
+            displayRawReorders(rawReorders, indexer, traceLoader);
         }
         exe.shutdownNow();
     }
 
 
-    public static void displayRawReorders(List<RawReorder> rawReorders, Indexer indexer) {
+    public static void displayRawReorders(List<RawReorder> rawReorders, Indexer indexer, EventLoader traceLoader) {
         for (RawReorder rawReorder : rawReorders) {
             System.out.println("RawReorder:");
             System.out.println("  Switch Pair: " + rawReorder.switchPair);
             System.out.println("  Depend Pair: " + rawReorder.dependPair);
             System.out.println("  Schedule:");
             for (String s : rawReorder.schedule) {
-                System.out.println("    " + s + "    " + indexer.getAllNodeMap().get(s));
+                String[] parts = s.split("-");
+                short tid = Short.parseShort(parts[1]);
+                System.out.println(traceLoader.threadColorMap.get(tid) + "    " + s + "    " + indexer.getAllNodeMap().get(s));
             }
             System.out.println();
         }
