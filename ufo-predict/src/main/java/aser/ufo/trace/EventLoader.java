@@ -1,22 +1,21 @@
 package aser.ufo.trace;
 
 import aser.ufo.NewReachEngine;
-import aser.ufo.UFO;
-import aser.ufo.VectorClock;
+import aser.ufo.Reorder;
 import aser.ufo.misc.CModuleSection;
 import aser.ufo.misc.CModuleList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectRBTreeMap;
 import it.unimi.dsi.fastutil.shorts.ShortOpenHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import trace.*;
 
 import java.io.*;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class EventLoader {
 
@@ -33,6 +32,9 @@ public class EventLoader {
     };
 
     public Map<Short, String> threadColorMap = new HashMap<Short, String>();
+
+    Map<Short, TLEventSeq> fileSeqinfo = new HashMap<>();
+
 
 
     public final ExecutorService exe;
@@ -73,12 +75,12 @@ public class EventLoader {
 
 
         for (File f : traces) {
-            if (UFO.MODULE_TXT.equals(f.getName())) {
+            if (Reorder.MODULE_TXT.equals(f.getName())) {
                 loadCModuleInfo(f);
                 continue;
-            } else if (UFO.STAT_TXT.equals(f.getName())) {
+            } else if (Reorder.STAT_TXT.equals(f.getName())) {
                 continue;
-            } else if (UFO.STAT_CSV.equals(f.getName())) {
+            } else if (Reorder.STAT_CSV.equals(f.getName())) {
                 continue;
             }
             short tid = Short.parseShort(f.getName());
@@ -101,46 +103,13 @@ public class EventLoader {
 //  protected AtomicInteger gidGen = new AtomicInteger(1);
 
     public int validCount() {
-        int enabled = 0;
-        for (FileInfo fi : fileInfoMap.values()) {
-            if (fi.enabled) enabled++;
-        }
-        return enabled;
+        return fileSeqinfo.size();
     }
 
     public boolean hasNext() {
         return validCount() > 0;
     }
 
-//  public void loadCModuleInfo(File f) {
-//    BufferedReader reader = null;
-//    try {
-//      reader = new BufferedReader(new FileReader(f));
-//      String line;
-//      while (null != (line = reader.readLine())) {
-//        String[] info = line.split(" ");
-//        if (info.length != 4) {
-//          throw new IllegalArgumentException("module info format error " + f);
-//        }
-//        long base = Long.parseLong(info[1].trim(), 16);
-//        long begin = Long.parseLong(info[2].trim(), 16);
-//        long end = Long.parseLong(info[3].trim(), 16);
-//        CModuleSection m = new CModuleSection(info[0].trim(), base, begin, end);
-//        this.moduleList.add(m);
-//      }
-//      reader.close();
-//    } catch (Exception e) {
-//      throw new RuntimeException(e);
-//    } finally {
-//      if (reader != null) {
-//        try {
-//          reader.close();
-//        } catch (IOException e) {
-//          e.printStackTrace();
-//        }
-//      }
-//    }
-//  }
 
     void loadCModuleInfo(File f) {
         BufferedReader reader = null;
@@ -197,50 +166,42 @@ public class EventLoader {
         }
     }
 
-    private ShortOpenHashSet addTLSeq(long limit, Indexer mIdx, ShortOpenHashSet tids) {
-        ShortOpenHashSet newTids = new ShortOpenHashSet(3);
-        for (short tid : tids) {
-            FileInfo fi = fileInfoMap.get(tid);
-            if (fi == null || !fi.enabled) continue;
-            LoadingTask2 loader = fi.getEventLoader(limit);
-
-            TLEventSeq seq = loader.load();
-            TLHeader h = seq.header;
-            if (seq.events != null && !seq.events.isEmpty()) {
-                mIdx.addTidSeq(seq.tid, seq.events);
-            } else {
-                fileInfoMap.remove(seq.tid);
-            }
-            if (seq.newTids.isEmpty()) continue;
-
-            for (short ntid : seq.newTids) {
-                FileInfo nfi = fileInfoMap.get(ntid);
-                if (nfi != null) {
-                    nfi.enabled = true;
-                }
-            }
-
-            newTids.addAll(seq.newTids);
-
-        } // for
-        return newTids;
-    }
-
     public void updateIndexerWithAliveThreads(Indexer mIdx) {
         int tidCount = aliveTids.size();
         ShortOpenHashSet currentTids = new ShortOpenHashSet(aliveTids);
         final int ptLimit = windowSize;
 
+        HashSet<Short> visited = new HashSet<>();
         while (!currentTids.isEmpty()) {
-            ShortOpenHashSet nextTids = addTLSeq(ptLimit, mIdx, currentTids);
+            ShortOpenHashSet nextTids = addTLSeq1(mIdx, currentTids, visited);
             tidCount += nextTids.size();
             updateAliveTids(nextTids);
             currentTids = nextTids;
         }
 
-        removeEOFTraceFiles();
+        removeVisitSeq(visited);
         mIdx.metaInfo.tidCount = tidCount;
     }
+
+
+
+
+    private ShortOpenHashSet addTLSeq1(Indexer mIdx, ShortOpenHashSet tids, HashSet<Short> visited) {
+        ShortOpenHashSet newTids = new ShortOpenHashSet(3);
+        for (short tid : tids) {
+            TLEventSeq seq1 = fileSeqinfo.get(tid);
+            if (seq1.events != null && !seq1.events.isEmpty()) {
+                visited.add(seq1.tid);
+                mIdx.addTidSeq(seq1.tid, seq1.events);
+            }
+            if (seq1.newTids.isEmpty()) continue;
+            newTids.addAll(seq1.newTids);
+        } // for
+        return newTids;
+    }
+
+
+
 
     private void updateAliveTids(ShortOpenHashSet newTids) {
         newTids.removeAll(aliveTids);
@@ -258,35 +219,59 @@ public class EventLoader {
         }
     }
 
-    public int getWindowSize() {
-        return windowSize;
+    private void removeVisitSeq(HashSet<Short> visited) {
+        fileSeqinfo.entrySet().removeIf(shortTLEventSeqEntry -> visited.contains(shortTLEventSeqEntry.getKey()));
     }
-
-    private static final LongOpenHashSet EMPTY_LSET = new LongOpenHashSet();
-
-
-//  static long gidGen = 0; // a global taskId (gid) representing their order in the trace,
 
     public CModuleList getModuleList() {
         return moduleList;
     }
 
 
-    public void loadSycnTraceEvent() {
+    public void loadAllEvent() {
         for (short tid : allThreads) {
             FileInfo fi = fileInfoMap.get(tid);
             if (fi != null) {
-                TLEventSeq seq = new NewLoadingTask(fi).load();
+                TLEventSeq seq = new NewLoadingTask(fi).loadAllEvent();
                 LOG.info("tid: " + tid + " Total Events:  " + seq.numOfEvents);
+                fileSeqinfo.put(tid, seq);
                 //reset file info so that it can be reused again
                 fi.fileOffset = 0;
                 fi.lastFileOffset = 0;
             }
         }
+        System.out.println(fileSeqinfo);
     }
 
-    public void preprocessSycn() {
-        NewReachEngine.setThreadIdsVectorClock(allThreads.toShortArray());
-        NewReachEngine.processSyncNode();
+    public void processSycn() {
+        for (short tid : allThreads) {
+            TLEventSeq tlEventSeq = fileSeqinfo.get(tid);
+            if (tlEventSeq != null && tlEventSeq.events != null) {
+                for (AbstractNode node : tlEventSeq.events) {
+                    if (node != null) {
+                        if (node instanceof TBeginNode) {
+                            NewReachEngine.saveToThreadFirstNode(tid, (TBeginNode) node);
+                        } else if (node instanceof TEndNode) {
+                            NewReachEngine.saveToThreadLastNode(tid, (TEndNode) node);
+                        } else if (node instanceof TStartNode) {
+                            NewReachEngine.saveToStartNodeList((TStartNode) node);
+                        } else if (node instanceof TJoinNode) {
+                            NewReachEngine.saveToJoinNodeList((TJoinNode) node);
+                        } else if (node instanceof WaitNode) {
+                            TLEventSeq.stat.c_isync++;
+                            NewReachEngine.saveToWaitNotifyList((IWaitNotifyNode) node);
+                        } else if (node instanceof NotifyNode) {
+                            TLEventSeq.stat.c_isync++;
+                            NewReachEngine.saveToWaitNotifyList((IWaitNotifyNode) node);
+                        } else if (node instanceof NotifyAllNode) {
+                            TLEventSeq.stat.c_isync++;
+                            NewReachEngine.saveToWaitNotifyList((IWaitNotifyNode) node);
+                        }
+                    }
+                }
+            }
+            NewReachEngine.setThreadIdsVectorClock(allThreads.toShortArray());
+            NewReachEngine.processSyncNode();
+        }
     }
 }

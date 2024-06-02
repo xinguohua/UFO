@@ -4,12 +4,10 @@ import aser.ufo.misc.Addr2line;
 import aser.ufo.misc.AddrInfo;
 import aser.ufo.misc.Pair;
 import aser.ufo.misc.RawReorder;
-import aser.ufo.trace.AllocaPair;
 import aser.ufo.trace.EventLoader;
 import aser.ufo.trace.Indexer;
 import aser.ufo.trace.TLEventSeq;
 import config.Configuration;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongListIterator;
@@ -17,7 +15,6 @@ import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import trace.AbstractNode;
-import trace.DeallocNode;
 import trace.MemAccNode;
 
 import java.io.FileWriter;
@@ -42,7 +39,7 @@ public class Session {
 
     public Session(Configuration c) {
         config = c;
-        exe = Executors.newFixedThreadPool(UFO.PAR_LEVEL);
+        exe = Executors.newFixedThreadPool(Reorder.PAR_LEVEL);
         traceLoader = new EventLoader(exe, config.traceDir);
         solver = new SimpleSolver(config);
     }
@@ -56,7 +53,7 @@ public class Session {
         addr2line = new Addr2line(traceLoader.getModuleList());
         windowSize = (int) config.window_size;
         if (windowSize < 10) {
-            windowSize = (int) (UFO.MAX_MEM_SIZE * 0.9 / UFO.AVG_EVENT / traceLoader.fileInfoMap.size()
+            windowSize = (int) (Reorder.MAX_MEM_SIZE * 0.9 / Reorder.AVG_EVENT / traceLoader.fileInfoMap.size()
                     // half mem for events, half for z3
                     / 0.7);
             LOG.info("Suggested window size {}", windowSize);
@@ -86,8 +83,8 @@ public class Session {
     }
 
     public void start() {
-        traceLoader.loadSycnTraceEvent();
-        traceLoader.preprocessSycn();
+        traceLoader.loadAllEvent();
+        traceLoader.processSycn();
         printTraceStats();
         while (traceLoader.hasNext()) {
             Indexer indexer = new Indexer();
@@ -106,7 +103,7 @@ public class Session {
 
             solver.setCurrentIndexer(indexer);
 
-            List<RawReorder> rawReorders = solveReorderConstr(indexer.getTSTid2sqeNodes(), indexer.getReorderPairMap().entrySet().iterator(), UFO.PAR_LEVEL);
+            List<RawReorder> rawReorders = solveReorderConstr(indexer.getTSTid2sqeNodes(), indexer.getReorderPairMap().entrySet().iterator(), Reorder.PAR_LEVEL);
 
             displayRawReorders(rawReorders, indexer, traceLoader);
         }
@@ -223,14 +220,11 @@ public class Session {
             final Pair<MemAccNode, MemAccNode> switchPair = e.getKey();
             final Pair<MemAccNode, MemAccNode> dependPair = e.getValue();
 
-            cexe.submit(new Callable<RawReorder>() {
-                @Override
-                public RawReorder call() throws Exception {
-                    ArrayList<String> bugSchedule = solver.searchReorderSchedule(map, switchPair, dependPair);
-                    if (bugSchedule != null) return new RawReorder(switchPair, dependPair, bugSchedule);
-                    else return null;
+            cexe.submit(() -> {
+                ArrayList<String> bugSchedule = solver.searchReorderSchedule(map, switchPair, dependPair);
+                if (bugSchedule != null) return new RawReorder(switchPair, dependPair, bugSchedule);
+                else return null;
 
-                }
             });
             task++;
         }

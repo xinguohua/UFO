@@ -1,17 +1,13 @@
 package aser.ufo;
 
 import aser.ufo.misc.Pair;
-import aser.ufo.trace.AllocaPair;
 import aser.ufo.trace.Indexer;
 import config.Configuration;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import trace.*;
-import z3.Z3FastRun;
 import z3.Z3Run;
 
 import java.util.*;
@@ -19,10 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static aser.ufo.Session.LOG;
 
-public class SimpleSolver implements UfoSolver {
+public class SimpleSolver implements ReorderSolver {
 
     public int ct_vals = 0;
-    public IntArrayList ct_constr = new IntArrayList(200);
+    public final IntArrayList ct_constr = new IntArrayList(200);
 
     protected AtomicInteger taskId = new AtomicInteger(0);// constraint taskId
 
@@ -67,20 +63,36 @@ public class SimpleSolver implements UfoSolver {
 
 
     public void rebuildIntraThrConstr(Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map, Pair<MemAccNode, MemAccNode> reorderPair) {
-        StringBuilder sb = new StringBuilder(UFO.INITSZ_L * 10);
+        StringBuilder sb = new StringBuilder(Reorder.INITSZ_L * 10);
         for (ArrayList<AbstractNode> nodes : map.values()) {
             // at least cBegin/cEnd
             if (nodes == null || nodes.size() <= 1) continue;
 
+            short tid = nodes.get(0).tid;
+            AbstractNode firstNode = NewReachEngine.tidFirstNode.get(tid);
+            if (firstNode != null){
+                for (AbstractNode node : nodes) {
+                    if (node.gid == firstNode.gid) continue;
+                    sb.append("(assert(< ").append(makeVariable(firstNode)).append(' ').append(makeVariable(node)).append("))\n");
+                }
+            }
+
+            AbstractNode lastNode = NewReachEngine.tidLastNode.get(tid);
+            if (lastNode != null){
+                for (AbstractNode node : nodes) {
+                    if (node.gid == lastNode.gid) continue;
+                    if (firstNode != null && node.gid == firstNode.gid) continue;
+                    sb.append("(assert(< ").append(makeVariable(node)).append(' ').append(makeVariable(lastNode)).append("))\n");
+                }
+            }
+
             nodes.sort(Comparator.comparingInt(AbstractNode::getGid));
             AbstractNode lastN = nodes.get(0);
             String lastVar = makeVariable(lastN);
-
             boolean skip = false;
             for (int i = 1; i < nodes.size(); i++) {
                 AbstractNode curN = nodes.get(i);
                 String var = makeVariable(curN);
-
                 // 检查是否在 reorderPair 的范围内
                 if (makeVariable(reorderPair.key).equals(lastVar)) {
                     skip = true;
@@ -109,7 +121,7 @@ public class SimpleSolver implements UfoSolver {
 
     @Override
     public void buildSyncConstr(Indexer index) {
-        StringBuilder sb = new StringBuilder(UFO.INITSZ_S * 10);
+        StringBuilder sb = new StringBuilder(Reorder.INITSZ_S * 10);
 
         Short2ObjectOpenHashMap<AbstractNode> firstNodes = NewReachEngine.tidFirstNode;
         Short2ObjectOpenHashMap<AbstractNode> lastNodes = NewReachEngine.tidLastNode;
@@ -188,7 +200,7 @@ public class SimpleSolver implements UfoSolver {
     protected void appendLockConstrOpt(StringBuilder sb, ArrayList<LockPair> lockPairs) {
 
         // obtain each thread's last lockpair
-        Short2ObjectOpenHashMap<LockPair> lastLockPairMap = new Short2ObjectOpenHashMap<LockPair>(UFO.INITSZ_S / 2);
+        Short2ObjectOpenHashMap<LockPair> lastLockPairMap = new Short2ObjectOpenHashMap<LockPair>(Reorder.INITSZ_S / 2);
 
         for (int i = 0; i < lockPairs.size(); i++) {
             LockPair curLP = lockPairs.get(i);
@@ -204,7 +216,7 @@ public class SimpleSolver implements UfoSolver {
             short curLockTid = curLP.nLock.tid;
             LockPair lp1_pre = lastLockPairMap.get(curLockTid);
 
-            ArrayList<LockPair> flexLockPairs = new ArrayList<LockPair>(UFO.INITSZ_S);
+            ArrayList<LockPair> flexLockPairs = new ArrayList<LockPair>(Reorder.INITSZ_S);
 
             // find all lps that are from a different thread, and have no
             // happens-after relation with curLP
@@ -412,8 +424,14 @@ public class SimpleSolver implements UfoSolver {
 
         String csb = CONS_SETLOGIC + constrDeclare + constrMHB + constrSync + obeyStr + violateStr + "(assert (< " + switchNode2Str + " " + switchNode1Str + " ))" + CONS_CHECK_GETMODEL;
 
+        System.out.println("CONS_SETLOGIC: " + CONS_SETLOGIC);
+        System.out.println("constrDeclare: " + constrDeclare);
+        System.out.println("constrMHB: " + constrMHB);
+        System.out.println("constrSync: " + constrSync);
+        System.out.println("obeyStr: " + obeyStr);
+        System.out.println("violateStr: " + violateStr);
         synchronized (ct_constr) {
-            ct_constr.push(UFO.countMatches(csb, "assert"));
+            ct_constr.push(Reorder.countMatches(csb, "assert"));
         }
 
         if (!doSolve) return null;

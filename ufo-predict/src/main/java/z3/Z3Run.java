@@ -37,15 +37,9 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.*;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import config.Configuration;
-import aser.ufo.UFO;
-import it.unimi.dsi.fastutil.ints.Int2IntRBTreeMap;
-import it.unimi.dsi.fastutil.ints.Int2LongRBTreeMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
+import aser.ufo.Reorder;
 
 /**
  * Constraint solving with Z3 solver
@@ -178,7 +172,7 @@ protected static String Z3_SMT2 = ".z3smt2";
    */
   public ArrayList<String> computeSchedule(Z3Model model) {
 
-    ArrayList<String> schedule = new ArrayList<String>(UFO.INITSZ_S);
+    ArrayList<String> schedule = new ArrayList<String>(Reorder.INITSZ_S);
 
     for (Entry<String, Object> entryModel : model.getMap().entrySet()) {
       String op = entryModel.getKey();

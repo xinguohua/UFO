@@ -1,6 +1,6 @@
 package aser.ufo;
 
-public class UFO {
+public class Reorder {
 
   public static final int INITSZ_L = 5 * 1000; // approximately the node number
   public static final int INITSZ_S = 600; // nLock threads number

@@ -31,7 +31,7 @@
 
 package z3;
 
-import aser.ufo.UFO;
+import aser.ufo.Reorder;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -45,7 +45,7 @@ import java.util.HashMap;
  */
 public class Z3Model {
 
-  Map<String, Object> vals = new HashMap<String, Object>(UFO.INITSZ_S);
+  Map<String, Object> vals = new HashMap<String, Object>(Reorder.INITSZ_S);
 
   void put(String varName, Object value) {
     vals.put(varName, value);
@@ -66,7 +66,7 @@ public class Z3Model {
   }
 
   public static class Array {
-    private Map<Integer, Number> vals = new HashMap<Integer, Number>(UFO.INITSZ_S);
+    private Map<Integer, Number> vals = new HashMap<Integer, Number>(Reorder.INITSZ_S);
     private Number defaultVal;
 
     void put(Integer index, Number value) {

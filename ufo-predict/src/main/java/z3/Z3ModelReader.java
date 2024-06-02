@@ -58,11 +58,8 @@ public class Z3ModelReader {
       String result = readResult(p);
       if (result.startsWith("(error "))
         throw new Error("smt2 file has errors");
-      //System.out.println("Feasible: " + "sat".equals(result));
 
       if ("sat".equals(result)) {
-        //if the constraints are satisfied
-
         Z3Model model = process((Vector) p.parse());
         fis.close();
         return model;
@@ -70,13 +67,7 @@ public class Z3ModelReader {
 
       fis.close();
       return null;
-    } catch (Exception e) {
-      //throw new Error(e);
-      //e.printStackTrace();
-      return null;
-    } catch (Error e) {
-      //throw new Error(e);
-      //e.printStackTrace();//don't throw it if it is a NPE
+    } catch (Exception | Error e) {
       return null;
     }
   }
@@ -98,14 +89,10 @@ public class Z3ModelReader {
   }
 
   private static Z3Model process(Vector root) {
-
-//    if (!root.elementAt(0).toString().equals("model"))
-//      throw new IllegalStateException();
-
     Z3Model model = new Z3Model();
 
     int size = root.size();
-    for (int i = 1; i < size; i++)
+    for (int i = 0; i < size; i++)
       define_fun(root.elementAt(i), model);
 
     return model;

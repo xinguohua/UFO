@@ -2,11 +2,8 @@ package aser.ufo;
 
 import aser.ufo.misc.Pair;
 import aser.ufo.trace.Indexer;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import trace.AbstractNode;
-import trace.DeallocNode;
 import trace.MemAccNode;
 import trace.ReadNode;
 
@@ -15,7 +12,7 @@ import java.util.ArrayList;
 /**
  * Created by cbw on 11/15/16.
  */
-public interface UfoSolver {
+public interface ReorderSolver {
 
 
   void rebuildIntraThrConstr(Short2ObjectOpenHashMap<ArrayList<AbstractNode>> map, Pair<MemAccNode, MemAccNode> reorderPair);

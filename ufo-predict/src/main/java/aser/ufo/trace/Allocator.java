@@ -1,7 +1,7 @@
 package aser.ufo.trace;
 
 import aser.ufo.NewReachEngine;
-import aser.ufo.UFO;
+import aser.ufo.Reorder;
 import it.unimi.dsi.fastutil.longs.Long2ObjectRBTreeMap;
 import it.unimi.dsi.fastutil.objects.ObjectCollection;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
@@ -16,7 +16,7 @@ import java.util.*;
 
 class TLAllocQ {
   //  Long2ObjectRBTreeMap
-  ArrayList<AllocaPair> allocQ = new ArrayList<AllocaPair>(UFO.INITSZ_S);
+  ArrayList<AllocaPair> allocQ = new ArrayList<AllocaPair>(Reorder.INITSZ_S);
 
   Long2ObjectRBTreeMap<ArrayList<AllocaPair>> tree = new Long2ObjectRBTreeMap<ArrayList<AllocaPair>>(
       // addr in this tree follows DESC order
@@ -48,10 +48,10 @@ public class Allocator {
   private static final Logger LOG = LoggerFactory.getLogger(Allocator.class);
 
   private Short2ObjectOpenHashMap<TLAllocQ>
-      tid2AllocQ = new Short2ObjectOpenHashMap<TLAllocQ>(UFO.INITSZ_S / 2);
+      tid2AllocQ = new Short2ObjectOpenHashMap<TLAllocQ>(Reorder.INITSZ_S / 2);
 
-  private HashSet<DeallocNode> unmatched = new HashSet<DeallocNode>(UFO.INITSZ_S);
-  HashMap<MemAccNode, HashSet<AllocaPair>> machtedAcc = new HashMap<MemAccNode, HashSet<AllocaPair>>(UFO.INITSZ_S * 2);
+  private HashSet<DeallocNode> unmatched = new HashSet<DeallocNode>(Reorder.INITSZ_S);
+  HashMap<MemAccNode, HashSet<AllocaPair>> machtedAcc = new HashMap<MemAccNode, HashSet<AllocaPair>>(Reorder.INITSZ_S * 2);
 
   private long count_alloc = 0;
   private long count_dealloc = 0;

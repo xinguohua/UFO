@@ -1,6 +1,6 @@
 package aser.ufo.trace;
 
-import aser.ufo.UFO;
+import aser.ufo.Reorder;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.shorts.Short2IntOpenHashMap;
 
@@ -8,7 +8,7 @@ public class TraceMetaInfo {
 
   public int tidCount = 0;
   public LongOpenHashSet sharedAddrs;
-  public Short2IntOpenHashMap tidRawNodesCounts = new Short2IntOpenHashMap(UFO.INITSZ_S);
+  public Short2IntOpenHashMap tidRawNodesCounts = new Short2IntOpenHashMap(Reorder.INITSZ_S);
   public  int rawNodeCount = 0;
 
   public long countAllNodes;

@@ -3,7 +3,7 @@
 package aser.ufo.trace;
 
 import aser.ufo.NewReachEngine;
-import aser.ufo.UFO;
+import aser.ufo.Reorder;
 import aser.ufo.misc.Pair;
 import it.unimi.dsi.fastutil.longs.*;
 import it.unimi.dsi.fastutil.shorts.*;
@@ -29,15 +29,15 @@ public class Indexer {
     protected static final boolean CHECK_MEM_ERROR = true;
 
 
-    protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> _rawTid2seq = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(UFO.INITSZ_S / 2);
+    protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> _rawTid2seq = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(Reorder.INITSZ_S / 2);
 
-    protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> tid2CallSeq = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(UFO.INITSZ_S / 2);
+    protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> tid2CallSeq = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(Reorder.INITSZ_S / 2);
 
     public TraceMetaInfo metaInfo = new TraceMetaInfo();
 
     // for thread sync constraints
-    protected Short2ObjectOpenHashMap<AbstractNode> tidFirstNode = new Short2ObjectOpenHashMap<AbstractNode>(UFO.INITSZ_S / 2);
-    protected Short2ObjectOpenHashMap<AbstractNode> tidLastNode = new Short2ObjectOpenHashMap<AbstractNode>(UFO.INITSZ_S / 2);
+    protected Short2ObjectOpenHashMap<AbstractNode> tidFirstNode = new Short2ObjectOpenHashMap<AbstractNode>(Reorder.INITSZ_S / 2);
+    protected Short2ObjectOpenHashMap<AbstractNode> tidLastNode = new Short2ObjectOpenHashMap<AbstractNode>(Reorder.INITSZ_S / 2);
 
     protected Map<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>> reorderPairMap = new HashMap<Pair<MemAccNode, MemAccNode>, Pair<MemAccNode, MemAccNode>>();
 
@@ -45,25 +45,25 @@ public class Indexer {
     private static class SharedAccIndexes {
 
         // z3 declare var, all shared acc and other nodes
-        protected ArrayList<AbstractNode> allNodeSeq = new ArrayList<AbstractNode>(UFO.INITSZ_L);
+        protected ArrayList<AbstractNode> allNodeSeq = new ArrayList<AbstractNode>(Reorder.INITSZ_L);
 
         protected Map<String, AbstractNode> allNodeMap = new HashMap<String, AbstractNode>();
 
 
-        protected HashMap<MemAccNode, DeallocNode> acc2Dealloc = new HashMap<MemAccNode, DeallocNode>(UFO.INITSZ_L);
+        protected HashMap<MemAccNode, DeallocNode> acc2Dealloc = new HashMap<MemAccNode, DeallocNode>(Reorder.INITSZ_L);
 
-        protected Short2ObjectOpenHashMap<ArrayList<ReadNode>> tid2seqReads = new Short2ObjectOpenHashMap<ArrayList<ReadNode>>(UFO.INITSZ_L);
+        protected Short2ObjectOpenHashMap<ArrayList<ReadNode>> tid2seqReads = new Short2ObjectOpenHashMap<ArrayList<ReadNode>>(Reorder.INITSZ_L);
 
         //protected ArrayList<ReadNode> seqRead = new ArrayList<ReadNode>(UFO.INITSZ_L);
 
         //  protected ArrayList<WriteNode> seqWrite = new ArrayList<WriteNode>(UFO.INITSZ_L);
         // addr to acc node
-        protected Long2LongOpenHashMap initWrites = new Long2LongOpenHashMap(UFO.INITSZ_L);
+        protected Long2LongOpenHashMap initWrites = new Long2LongOpenHashMap(Reorder.INITSZ_L);
 
-        protected Long2ObjectOpenHashMap<ArrayList<WriteNode>> addr2SeqWrite = new Long2ObjectOpenHashMap<ArrayList<WriteNode>>(UFO.INITSZ_L);
+        protected Long2ObjectOpenHashMap<ArrayList<WriteNode>> addr2SeqWrite = new Long2ObjectOpenHashMap<ArrayList<WriteNode>>(Reorder.INITSZ_L);
 
         // shared acc and all other (nLock dealloc ...)
-        protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> tid2sqeNodes = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(UFO.INITSZ_L);
+        protected Short2ObjectOpenHashMap<ArrayList<AbstractNode>> tid2sqeNodes = new Short2ObjectOpenHashMap<ArrayList<AbstractNode>>(Reorder.INITSZ_L);
 
 
         void destroy() {
@@ -92,7 +92,7 @@ public class Indexer {
 
 
             if (tidNodes == null) {
-                tidNodes = new ArrayList<ReadNode>(UFO.INITSZ_L);
+                tidNodes = new ArrayList<ReadNode>(Reorder.INITSZ_L);
                 tid2seqReads.put(node.tid, tidNodes);
             }
             tidNodes.add(node);
@@ -141,25 +141,9 @@ public class Indexer {
 
         for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> entry : _rawTid2seq.short2ObjectEntrySet()) {
             short tid = entry.getShortKey();
-            ArrayList<AbstractNode> tidNodes = shared.tid2sqeNodes.computeIfAbsent(tid, k -> new ArrayList<>(UFO.INITSZ_L));
+            ArrayList<AbstractNode> tidNodes = shared.tid2sqeNodes.computeIfAbsent(tid, k -> new ArrayList<>(Reorder.INITSZ_L));
 
-            AbstractNode first = NewReachEngine.tidFirstNode.get(tid);
-            AbstractNode last = NewReachEngine.tidLastNode.get(tid);
-            addNodeToSharedAndTid(first, tidNodes);
-            addNodeToSharedAndTid(last, tidNodes);
-
-            for (TStartNode tStartNode : NewReachEngine.thrStartNodeList) {
-                if (tStartNode.tid == tid){
-                    addNodeToSharedAndTid(tStartNode, tidNodes);
-                }
-            }
-            for (TJoinNode joinNode : NewReachEngine.joinNodeList) {
-                if (joinNode.tid == tid){
-                    addNodeToSharedAndTid(joinNode, tidNodes);
-                }
-            }
             for (AbstractNode node : entry.getValue()) {
-                if (node == first || node == last) continue;
                 if (node instanceof MemAccNode) {
                     MemAccNode memNode = (MemAccNode) node;
                     if (sharedAddrSet.contains(memNode.getAddr())) {
@@ -179,7 +163,10 @@ public class Indexer {
                             dependentPair.value = memNode;
                         }
                     }
-                } else if (!(node instanceof FuncEntryNode) && !(node instanceof FuncExitNode)) {
+                } else if (!(node instanceof FuncEntryNode)
+                        && !(node instanceof FuncExitNode)
+                        && !(node instanceof AllocNode)
+                        && !(node instanceof DeallocNode)) {
                     addNodeToSharedAndTid(node, tidNodes);
                 }
             }
@@ -225,7 +212,7 @@ public class Indexer {
                 } else if (node instanceof FuncExitNode || node instanceof FuncEntryNode) {
                     ArrayList<AbstractNode> callseq = tid2CallSeq.get(curTid);
                     if (callseq == null) {
-                        callseq = new ArrayList<AbstractNode>(UFO.INITSZ_L);
+                        callseq = new ArrayList<AbstractNode>(Reorder.INITSZ_L);
                         tid2CallSeq.put(curTid, callseq);
                     }
                     callseq.add(node);
@@ -250,9 +237,9 @@ public class Indexer {
      */
     protected LongOpenHashSet findSharedAcc() {
 
-        Long2ObjectOpenHashMap<ShortOpenHashSet> addr2TidReads = new Long2ObjectOpenHashMap<ShortOpenHashSet>(UFO.INITSZ_S);
-        Long2ObjectOpenHashMap<ShortOpenHashSet> addr2TidWrites = new Long2ObjectOpenHashMap<ShortOpenHashSet>(UFO.INITSZ_S);
-        LongOpenHashSet sharedAddrSet = new LongOpenHashSet(UFO.INITSZ_L * 2);
+        Long2ObjectOpenHashMap<ShortOpenHashSet> addr2TidReads = new Long2ObjectOpenHashMap<ShortOpenHashSet>(Reorder.INITSZ_S);
+        Long2ObjectOpenHashMap<ShortOpenHashSet> addr2TidWrites = new Long2ObjectOpenHashMap<ShortOpenHashSet>(Reorder.INITSZ_S);
+        LongOpenHashSet sharedAddrSet = new LongOpenHashSet(Reorder.INITSZ_L * 2);
 //    sharedAddrSet.addAll(_allocationTree.keySet());
 
         for (Short2ObjectOpenHashMap.Entry<ArrayList<AbstractNode>> e : _rawTid2seq.short2ObjectEntrySet()) {
@@ -268,14 +255,14 @@ public class Indexer {
                 if (node instanceof ReadNode || node instanceof RangeReadNode) {
                     ShortOpenHashSet tidSetR = addr2TidReads.get(addr);
                     if (tidSetR == null) {
-                        tidSetR = new ShortOpenHashSet(UFO.INITSZ_S / 10);
+                        tidSetR = new ShortOpenHashSet(Reorder.INITSZ_S / 10);
                         addr2TidReads.put(addr, tidSetR);
                     }
                     tidSetR.add(tid);
                 } else if (node instanceof RangeWriteNode || node instanceof WriteNode) {
                     ShortOpenHashSet tidSetW = addr2TidWrites.get(addr);
                     if (tidSetW == null) {
-                        tidSetW = new ShortOpenHashSet(UFO.INITSZ_S / 10);
+                        tidSetW = new ShortOpenHashSet(Reorder.INITSZ_S / 10);
                         addr2TidWrites.put(addr, tidSetW);
                     }
                     tidSetW.add(tid);
@@ -284,12 +271,12 @@ public class Indexer {
             } // for addr
         } // for tid
 
-        LongOpenHashSet addrs = new LongOpenHashSet(UFO.INITSZ_L * 2);
+        LongOpenHashSet addrs = new LongOpenHashSet(Reorder.INITSZ_L * 2);
         addrs.addAll(addr2TidReads.keySet());
         addrs.addAll(addr2TidWrites.keySet());
         for (long addr : addrs) {
             ShortOpenHashSet wtids = addr2TidWrites.get(addr);
-            if (wtids != null && wtids.size() > 0) {
+            if (wtids != null && !wtids.isEmpty()) {
                 if (wtids.size() > 1) { // write thread > 1
                     sharedAddrSet.add(addr);
                 } else if (wtids.size() == 1) { // only one write
@@ -297,7 +284,7 @@ public class Indexer {
                     ShortOpenHashSet rtids = addr2TidReads.get(addr);
                     if (rtids != null) {
                         rtids.remove(wtid); // remove self
-                        if (rtids.size() > 0)// another read
+                        if (!rtids.isEmpty())// another read
                             sharedAddrSet.add(addr);
                     }
                 }
@@ -330,7 +317,7 @@ public class Indexer {
 //        seqWrite.add((WriteNode) node);
             ArrayList<WriteNode> seqW = shared.addr2SeqWrite.get(addr);
             if (seqW == null) {
-                seqW = new ArrayList<WriteNode>(UFO.INITSZ_L);
+                seqW = new ArrayList<WriteNode>(Reorder.INITSZ_L);
                 shared.addr2SeqWrite.put(addr, seqW);
             }
             seqW.add((WriteNode) node);
@@ -341,14 +328,14 @@ public class Indexer {
         }
     }
 
-    Long2ObjectOpenHashMap<ArrayList<LockPair>> addr2LockPairLs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(UFO.INITSZ_S);
+    Long2ObjectOpenHashMap<ArrayList<LockPair>> addr2LockPairLs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(Reorder.INITSZ_S);
 
     protected void handleSync2(short tid, ISyncNode node) {
 
         long addr = node.getAddr();
         ArrayList<ISyncNode> syncNodes = _syncNodesMap.get(addr);
         if (syncNodes == null) {
-            syncNodes = new ArrayList<ISyncNode>(UFO.INITSZ_S);
+            syncNodes = new ArrayList<ISyncNode>(Reorder.INITSZ_S);
             _syncNodesMap.put(addr, syncNodes);
         }
         syncNodes.add(node);
@@ -366,7 +353,7 @@ public class Indexer {
             metaInfo.countUnlock++;
             Long2ObjectOpenHashMap<ArrayList<LockPair>> indexedLockpairs = _tid2LockPairs.get(tid);
             if (indexedLockpairs == null) {
-                indexedLockpairs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(UFO.INITSZ_S);
+                indexedLockpairs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(Reorder.INITSZ_S);
                 _tid2LockPairs.put(tid, indexedLockpairs);
             }
             long lockId = ((UnlockNode) node).lockID;
@@ -398,7 +385,7 @@ public class Indexer {
                 long lockID = e.getLongKey();
                 ArrayList<LockPair> addrLpLs = addr2LockPairLs.get(lockID);
                 if (addrLpLs == null) {
-                    addrLpLs = new ArrayList<LockPair>(UFO.INITSZ_S * 5);
+                    addrLpLs = new ArrayList<LockPair>(Reorder.INITSZ_S * 5);
                     addr2LockPairLs.put(lockID, addrLpLs);
                 }
                 addrLpLs.addAll(e.getValue());
@@ -417,7 +404,7 @@ public class Indexer {
             if (!stack.isEmpty()) {
                 Long2ObjectOpenHashMap<ArrayList<LockPair>> indexedLockpairs = _tid2LockPairs.get(tid);
                 if (indexedLockpairs == null) {
-                    indexedLockpairs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(UFO.INITSZ_S);
+                    indexedLockpairs = new Long2ObjectOpenHashMap<ArrayList<LockPair>>(Reorder.INITSZ_S);
                     _tid2LockPairs.put(tid, indexedLockpairs);
                 }
 
@@ -426,7 +413,7 @@ public class Indexer {
                     long addr = syncnode.getAddr();
                     ArrayList<LockPair> lockpairs = indexedLockpairs.get(addr);
                     if (lockpairs == null) {
-                        lockpairs = new ArrayList<LockPair>(UFO.INITSZ_S);
+                        lockpairs = new ArrayList<LockPair>(Reorder.INITSZ_S);
                         indexedLockpairs.put(addr, lockpairs);
                     }
                     lockpairs.add(new LockPair(syncnode, null));
@@ -441,11 +428,11 @@ public class Indexer {
     }
 
 
-    Long2ObjectOpenHashMap<ArrayList<ISyncNode>> _syncNodesMap = new Long2ObjectOpenHashMap<ArrayList<ISyncNode>>(UFO.INITSZ_S);
+    Long2ObjectOpenHashMap<ArrayList<ISyncNode>> _syncNodesMap = new Long2ObjectOpenHashMap<ArrayList<ISyncNode>>(Reorder.INITSZ_S);
 
-    Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>> _tid2LockPairs = new Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>>(UFO.INITSZ_S / 2);
+    Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>> _tid2LockPairs = new Short2ObjectOpenHashMap<Long2ObjectOpenHashMap<ArrayList<LockPair>>>(Reorder.INITSZ_S / 2);
 
-    Short2ObjectOpenHashMap<Stack<ISyncNode>> _tid2SyncStack = new Short2ObjectOpenHashMap<Stack<ISyncNode>>(UFO.INITSZ_S / 2);
+    Short2ObjectOpenHashMap<Stack<ISyncNode>> _tid2SyncStack = new Short2ObjectOpenHashMap<Stack<ISyncNode>>(Reorder.INITSZ_S / 2);
 
     protected Long2ObjectOpenHashMap<AbstractNode> gid2node;
 

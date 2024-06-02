@@ -1,9 +1,6 @@
 package aser.ufo;
 
-import aser.ufo.trace.Bytes;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.shorts.Short2LongMap;
-import it.unimi.dsi.fastutil.shorts.Short2LongOpenHashMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import trace.AbstractNode;
 import trace.ISyncNode;
@@ -18,23 +15,21 @@ import trace.WaitNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class NewReachEngine {
 
 
-    public static Short2ObjectOpenHashMap<AbstractNode> tidFirstNode = new Short2ObjectOpenHashMap<AbstractNode>(UFO.INITSZ_S / 2);
-    public static Short2ObjectOpenHashMap<AbstractNode> tidLastNode = new Short2ObjectOpenHashMap<AbstractNode>(UFO.INITSZ_S / 2);
+    public static Short2ObjectOpenHashMap<AbstractNode> tidFirstNode = new Short2ObjectOpenHashMap<AbstractNode>(Reorder.INITSZ_S / 2);
+    public static Short2ObjectOpenHashMap<AbstractNode> tidLastNode = new Short2ObjectOpenHashMap<AbstractNode>(Reorder.INITSZ_S / 2);
 
-    public static ArrayList<ISyncNode> orderedSyncNodeList = new ArrayList<ISyncNode>(UFO.INITSZ_SYNC);
+    public static ArrayList<ISyncNode> orderedSyncNodeList = new ArrayList<ISyncNode>(Reorder.INITSZ_SYNC);
 
 
-    public static ArrayList<TStartNode> thrStartNodeList = new ArrayList<TStartNode>(UFO.INITSZ_S * 5);
-    public static ArrayList<TJoinNode> joinNodeList = new ArrayList<TJoinNode>(UFO.INITSZ_S * 5);
+    public static ArrayList<TStartNode> thrStartNodeList = new ArrayList<TStartNode>(Reorder.INITSZ_S * 5);
+    public static ArrayList<TJoinNode> joinNodeList = new ArrayList<TJoinNode>(Reorder.INITSZ_S * 5);
 
     //make this global across phases
-    public static Long2ObjectOpenHashMap<ArrayList<IWaitNotifyNode>> cond2WaitNotifyLs = new Long2ObjectOpenHashMap<ArrayList<IWaitNotifyNode>>(UFO.INITSZ_SYNC);
+    public static Long2ObjectOpenHashMap<ArrayList<IWaitNotifyNode>> cond2WaitNotifyLs = new Long2ObjectOpenHashMap<ArrayList<IWaitNotifyNode>>(Reorder.INITSZ_SYNC);
 
     public static void saveToWaitNotifyList(IWaitNotifyNode node) {
 
@@ -132,7 +127,7 @@ public class NewReachEngine {
     private static HashMap<Short, VectorClock> tidToVCs = new HashMap<Short, VectorClock>();
 
     private static Short2ObjectOpenHashMap<ArrayList<Long>> tid2GidsMap =
-            new Short2ObjectOpenHashMap<ArrayList<Long>>(UFO.INITSZ_S);
+            new Short2ObjectOpenHashMap<ArrayList<Long>>(Reorder.INITSZ_S);
 
     private static HashMap<Short, Short> tid2IndexMap = new HashMap<Short, Short>();
 
